@@ -5,19 +5,20 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "process.h"
 #include "util.h"
 
 void copy_from_optarg ( char ** dest );
-ARG * check_input ( const char * command, const char * type, const char * filename );
+PROC_FILTER * check_input ( const char * command, const char * type, const char * filename );
 
-ARG * parse_input ( const int argc, char * const * argv )
+PROC_FILTER * parse_input ( const int argc, char * const * argv )
 {
     int opt;
     char * command_reg = NULL;
     char * type        = NULL;
     char * file_reg    = NULL;
 
-    ARG * res;
+    PROC_FILTER * res;
 
     while ( ( opt = getopt ( argc, argv, "c:t:f:" ) ) != -1 )
     {
@@ -59,12 +60,12 @@ void copy_from_optarg ( char ** dest )
     strcpy ( *dest, optarg );
 }
 
-ARG * check_input ( const char * command, const char * type, const char * filename )
+PROC_FILTER * check_input ( const char * command, const char * type, const char * filename )
 {
     const int c_flags = 0;
 
-    ARG * res = (ARG *) check_malloc ( sizeof ( ARG ) );
-    memset ( res, 0, sizeof ( ARG ) );
+    PROC_FILTER * res = (PROC_FILTER *) check_malloc ( sizeof ( PROC_FILTER ) );
+    memset ( res, 0, sizeof ( PROC_FILTER ) );
 
     if ( command )
     {

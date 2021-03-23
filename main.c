@@ -7,7 +7,7 @@
 
 int main ( const int argc, char * const * argv )
 {
-    ARG * arguments = parse_input ( argc, argv );
+    PROC_FILTER * arguments = parse_input ( argc, argv );
     /* PID_LIST all_pids; */
 
     if ( arguments == NULL )
