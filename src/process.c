@@ -7,10 +7,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "file.h"
 #include "util.h"
 
 int get_cmd_username ( char * command, char * username, pid_t pid );
 int check_command_pass ( const char * command, PROC_FILTER * filter );
+int check_name_pass ( const char * name, const PROC_FILTER * filter );
+FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 
 PID_LIST get_all_pids ( )
 {
@@ -72,6 +75,7 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
     pid_t current_pid;
 
     FILE_LIST template;
+    FILE_LIST * res    = NULL;
     FILE_LIST * f_list = NULL;
 
     for ( proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
@@ -95,9 +99,35 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         strcpy ( template.command, command );
         strcpy ( template.user_name, username );
         template.pid = current_pid;
+
+        res = get_cwd ( current_pid, filter, template );
+        if ( res )
+            printf ( "%40s %5d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
     }
 
     return f_list;
+}
+
+FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
+{
+    char cwd_path[PATH_MAX];
+
+    FILE_LIST * res;
+
+    sprintf ( cwd_path, "/proc/%d/cwd", pid );
+
+    res = read_file_stat ( cwd_path, template );
+
+    if ( res )
+        strcpy ( res->file_descriptior, "cwd" );
+
+    if ( check_name_pass ( res->file_name, filter ) == 0 )
+    {
+        check_free ( res );
+        return NULL;
+    }
+
+    return res;
 }
 
 int get_cmd_username ( char * command, char * username, pid_t pid )
@@ -187,6 +217,29 @@ int check_command_pass ( const char * command, PROC_FILTER * filter )
     if ( filter->command_reg )
     {
         match_res = regexec ( filter->command_reg, command, nmatch, &match, eflags );
+
+        if ( match_res == 0 )
+            return 1;
+        else
+            return 0;
+    }
+
+    return 1;
+}
+
+int check_name_pass ( const char * name, const PROC_FILTER * filter )
+{
+    regmatch_t match;
+    const int nmatch = 1;
+    const int eflags = 0;
+    int match_res;
+
+    if ( strlen ( name ) == 0 )
+        return 0;
+
+    if ( filter->filename_reg )
+    {
+        match_res = regexec ( filter->filename_reg, name, nmatch, &match, eflags );
 
         if ( match_res == 0 )
             return 1;
