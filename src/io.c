@@ -93,7 +93,7 @@ PROC_FILTER * check_input ( const char * command, const char * type, const char 
         else
         {
             res->filename_reg = (regex_t *) check_malloc ( sizeof ( regex_t ) );
-            regcomp ( res->filename_reg, command, c_flags );
+            regcomp ( res->filename_reg, filename, c_flags );
             regfree ( &temp );
         }
     }
