@@ -9,4 +9,7 @@ void check_free ( void * ptr );
 /* Checking memory allocation is done successfully */
 void * check_malloc ( const size_t size );
 
+/* Checking memory reallocation is done successfully */
+void * check_realloc ( void * ptr, const size_t size );
+
 #endif

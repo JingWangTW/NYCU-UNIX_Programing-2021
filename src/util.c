@@ -19,3 +19,16 @@ void * check_malloc ( const size_t size )
 
     return ptr;
 }
+
+void * check_realloc ( void * ptr, const size_t size )
+{
+    void * ptr_new = realloc ( ptr, size );
+
+    if ( ptr_new == NULL )
+    {
+        fprintf ( stderr, "Outof Memory." );
+        exit ( EXIT_FAILURE );
+    }
+
+    return ptr_new;
+}
