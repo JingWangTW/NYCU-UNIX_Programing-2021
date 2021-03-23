@@ -1,11 +1,16 @@
 #include "process.h"
 
+#include <ctype.h>
 #include <dirent.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "util.h"
+
+int get_cmd_username ( char * command, char * username, pid_t pid );
+int check_command_pass ( const char * command, PROC_FILTER * filter );
 
 PID_LIST get_all_pids ( )
 {
@@ -56,4 +61,138 @@ PID_LIST get_all_pids ( )
     res.size = pid_count;
 
     return res;
+}
+
+FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
+{
+    int check_filter;
+    int proc_cnt;
+    char command[NAME_MAX + 1];
+    char username[LOGIN_NAME_MAX + 1];
+    pid_t current_pid;
+
+    FILE_LIST template;
+    FILE_LIST * f_list = NULL;
+
+    for ( proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
+    {
+        /* reset buf */
+        memset ( command, 0, sizeof ( char ) * ( NAME_MAX + 1 ) );
+        memset ( username, 0, sizeof ( char ) * ( LOGIN_NAME_MAX + 1 ) );
+
+        /* The current progress pid */
+        current_pid = pid_list.list[proc_cnt];
+
+        /* get command by pid */
+        get_cmd_username ( command, username, current_pid );
+
+        /* Check if command pass the filter */
+        check_filter = check_command_pass ( command, filter );
+        if ( !check_filter )
+            continue;
+
+        /* generate a template file node for current process */
+        strcpy ( template.command, command );
+        strcpy ( template.user_name, username );
+        template.pid = current_pid;
+    }
+
+    return f_list;
+}
+
+int get_cmd_username ( char * command, char * username, pid_t pid )
+{
+    char temp_path[PATH_MAX];
+    char tmp_cmd_name[NAME_MAX + 2]        = { 0 };
+    char tmp_user_name[LOGIN_NAME_MAX + 2] = { 0 };
+    char line_str[1000];
+    char * find_ptr;
+    int find_name, find_user;
+
+    uid_t user_id;
+    struct passwd * password;
+
+    FILE * st_file;
+
+    /* status file contains info we need */
+    sprintf ( temp_path, "/proc/%d/status", pid );
+
+    /* open file to read */
+    st_file = fopen ( temp_path, "r" );
+    if ( st_file == NULL )
+        return -1;
+
+    /* find each line in this file */
+    find_user = 0;
+    find_name = 0;
+    while ( fscanf ( st_file, "%1000[^\n] ", line_str ) != EOF )
+    {
+        /* find "Name: " Row */
+        find_ptr = strstr ( line_str, "Name:" );
+
+        if ( find_ptr == line_str )
+        {
+            for ( find_ptr = find_ptr + 5; *find_ptr != '\0' && isspace ( (unsigned char) *find_ptr ); )
+                find_ptr++;
+            strcpy ( tmp_cmd_name, find_ptr );
+
+            find_name = 1;
+        }
+
+        /* find "Uid: " Row */
+        find_ptr = strstr ( line_str, "Uid:" );
+        if ( find_ptr == line_str )
+        {
+            sscanf ( find_ptr, "Uid: %d", &user_id );
+
+            /* Get real user name from uid */
+            password = getpwuid ( user_id );
+
+            if ( password == NULL )
+                return -1;
+
+            strcpy ( tmp_user_name, password->pw_name );
+
+            find_user = 1;
+        }
+
+        if ( find_name && find_user )
+            break;
+    }
+
+    if ( tmp_cmd_name[strlen ( tmp_cmd_name ) - 1] == '\n' )
+        tmp_cmd_name[strlen ( tmp_cmd_name ) - 1] = '\0';
+
+    if ( tmp_user_name[strlen ( tmp_user_name ) - 1] == '\n' )
+        tmp_user_name[strlen ( tmp_user_name ) - 1] = '\0';
+
+    fclose ( st_file );
+
+    strcpy ( command, tmp_cmd_name );
+    strcpy ( username, tmp_user_name );
+
+    return 1;
+}
+
+int check_command_pass ( const char * command, PROC_FILTER * filter )
+{
+    regmatch_t match;
+    const int nmatch = 1;
+    const int eflags = 0;
+    int match_res;
+
+    if ( strlen ( command ) == 0 )
+        return 0;
+
+    if ( filter->command_reg )
+    {
+        match_res = regexec ( filter->command_reg, command, nmatch, &match, eflags );
+
+        if ( match_res == 0 )
+            return 1;
+        else
+            return 0;
+    }
+
+    return 1;
 }
