@@ -41,6 +41,14 @@ FILE_LIST * read_file_stat ( const char * file_path, const FILE_LIST template )
 
                 return res;
             }
+            else if ( errno == ENOENT )
+            {
+                sprintf ( res->file_name, "%s (readlink: File Not Found)", file_path );
+                res->type         = -1;
+                res->inode_number = -1;
+
+                return res;
+            }
             else
             {
                 check_free ( res );
