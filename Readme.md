@@ -37,7 +37,12 @@ make
         * `/proc/{pid}/cwd` is a symbolic link to the cwd of the process.
         * Need to get the file info that the link point to.
         * **Warn**: Need to check the permission to dereference symbilic link.
-
+    * `root`: 
+        * `/proc/{pid}/root`
+        * `/proc/{pid}/root` is a symbolic link to that points to the process's root directory.
+        * UNIX and Linux support the idea of a per-process root of the filesystem, set by the `chroot(2)` system call.
+        * Need to get the file info that the link point to.
+        * **Warn**: Need to check the permission to dereference symbilic link.
 ### Programing Relative
 * Parsing Arguments
     * [`getopt(3)`](https://man7.org/linux/man-pages/man3/getopt.3.html)
