@@ -7,7 +7,7 @@ A sample output from this homework is demonstrated as follows:
 
 ```
 $ ./hw1  -c bash
-COMMAND PID     USER      	    FD     TYPE     NODE     NAME      
+COMMAND PID     USER            FD     TYPE     NODE     NAME      
 bash    26884   terrynini38514	cwd    DIR      57779    /media/psf/Home/Desktop
 bash    26884   terrynini38514	root   DIR      2        /         
 bash    26884   terrynini38514	exe    REG      1179741  /usr/bin/bash
@@ -43,12 +43,12 @@ Your program has to output the following fields (columns) for each file opened b
     * `exe`: Program file of this process, can be read from `/proc/[pid]/exe`.
     * `mem`: Memory mapping information, can be read from `/proc/[pid]/maps`.
     * `del`: Indicate that the file or link has been deleted. You should show this value if there is a (deleted) mark right after the filename in memory maps.
-* `[0-9]+[rwu]`: File descriptor and opened mode.
-    * The numbers show the file descriptor number of the opened file.
-    * The mode `r` means the file is opened for reading.
-    * The mode `w` means the file is opened for writing.
-    * The mode `u` means the file is opened for reading and writing.
-* `NOFD`: If `/proc/[pid]/fd` is not accessible. In this case, the values for `TYPE` and `NODE` field can be left empty.
+    * `[0-9]+[rwu]`: File descriptor and opened mode.
+        * The numbers show the file descriptor number of the opened file.
+        * The mode `r` means the file is opened for reading.
+        * The mode `w` means the file is opened for writing.
+        * The mode `u` means the file is opened for reading and writing.
+    * `NOFD`: If `/proc/[pid]/fd` is not accessible. In this case, the values for `TYPE` and `NODE` field can be left empty.
 * `TYPE`: The type of the opened file. The value shown in `TYPE` can be one of the following cases.
     * `DIR`: A directory. `cwd` and `root` is also classified as this type.
     * `REG`: A regular file.
@@ -88,7 +88,7 @@ Your program has to order the output lines by performing a **numeric sort agains
 #### Run the command without root permission
 ```
 $ ./hw1 | head -n 20
-COMMAND             	PID      USER      FD       TYPE      NODE      NAME      
+COMMAND                 PID      USER      FD       TYPE      NODE      NAME      
 systemd             	1        root      cwd      unknown             /proc/1/cwd (readlink: Permission denied)
 systemd             	1        root      root     unknown             /proc/1/root (readlink: Permission denied)
 systemd             	1        root      exe      unknown             /proc/1/exe (readlink: Permission denied)
@@ -112,26 +112,26 @@ kworker/0:0H-kblockd	6        root      exe      unknown             /proc/6/exe
 #### Run the command with root permission
 ```
 $ sudo ./hw1 | head -n 20
-COMMAND             	PID      USER      FD       TYPE      NODE      NAME      
-systemd             	1        root      cwd      DIR       2         /         
-systemd             	1        root      root     DIR       2         /         
-systemd             	1        root      exe      REG       1185397   /usr/lib/systemd/systemd
-systemd             	1        root      mem      REG       1185397   /usr/lib/systemd/systemd
-systemd             	1        root      mem      REG       1186431   /usr/lib/x86_64-linux-gnu/libm-2.31.so
-systemd             	1        root      mem      REG       1186938   /usr/lib/x86_64-linux-gnu/libudev.so.1.6.17
-systemd             	1        root      mem      REG       1186944   /usr/lib/x86_64-linux-gnu/libunistring.so.2.1.0
-systemd             	1        root      mem      REG       1186167   /usr/lib/x86_64-linux-gnu/libgpg-error.so.0.28.0
-systemd             	1        root      mem      REG       1186380   /usr/lib/x86_64-linux-gnu/libjson-c.so.4.0.0
-systemd             	1        root      mem      REG       1185698   /usr/lib/x86_64-linux-gnu/libargon2.so.1
-systemd             	1        root      mem      REG       1185923   /usr/lib/x86_64-linux-gnu/libdevmapper.so.1.02.1
-systemd             	1        root      mem      REG       1180712   /usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0
-systemd             	1        root      mem      REG       1184837   /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-systemd             	1        root      mem      REG       1185810   /usr/lib/x86_64-linux-gnu/libcap-ng.so.0.0.0
-systemd             	1        root      mem      REG       1185926   /usr/lib/x86_64-linux-gnu/libdl-2.31.so
-systemd             	1        root      mem      REG       1186639   /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.9.0
-systemd             	1        root      mem      REG       1186696   /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
-systemd             	1        root      mem      REG       1185701   /usr/lib/x86_64-linux-gnu/liblzma.so.5.2.4
-systemd             	1        root      mem      REG       1186426   /usr/lib/x86_64-linux-gnu/liblz4.so.1.9.2
+COMMAND                 PID      USER      FD       TYPE      NODE      NAME      
+systemd                 1        root      cwd      DIR       2         /         
+systemd                 1        root      root     DIR       2         /         
+systemd                 1        root      exe      REG       1185397   /usr/lib/systemd/systemd
+systemd                 1        root      mem      REG       1185397   /usr/lib/systemd/systemd
+systemd                 1        root      mem      REG       1186431   /usr/lib/x86_64-linux-gnu/libm-2.31.so
+systemd                 1        root      mem      REG       1186938   /usr/lib/x86_64-linux-gnu/libudev.so.1.6.17
+systemd                 1        root      mem      REG       1186944   /usr/lib/x86_64-linux-gnu/libunistring.so.2.1.0
+systemd                 1        root      mem      REG       1186167   /usr/lib/x86_64-linux-gnu/libgpg-error.so.0.28.0
+systemd                 1        root      mem      REG       1186380   /usr/lib/x86_64-linux-gnu/libjson-c.so.4.0.0
+systemd                 1        root      mem      REG       1185698   /usr/lib/x86_64-linux-gnu/libargon2.so.1
+systemd                 1        root      mem      REG       1185923   /usr/lib/x86_64-linux-gnu/libdevmapper.so.1.02.1
+systemd                 1        root      mem      REG       1180712   /usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0
+systemd                 1        root      mem      REG       1184837   /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+systemd                 1        root      mem      REG       1185810   /usr/lib/x86_64-linux-gnu/libcap-ng.so.0.0.0
+systemd                 1        root      mem      REG       1185926   /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+systemd                 1        root      mem      REG       1186639   /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.9.0
+systemd                 1        root      mem      REG       1186696   /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+systemd                 1        root      mem      REG       1185701   /usr/lib/x86_64-linux-gnu/liblzma.so.5.2.4
+systemd                 1        root      mem      REG       1186426   /usr/lib/x86_64-linux-gnu/liblz4.so.1.9.2
 ```
 
 ## Remarks
