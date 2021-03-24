@@ -17,6 +17,7 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter );
 
 FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
+FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 
 PID_LIST get_all_pids ( )
 {
@@ -103,7 +104,7 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         strcpy ( template.user_name, username );
         template.pid = current_pid;
 
-        res = get_cwd ( current_pid, filter, template );
+        res = get_exe ( current_pid, filter, template );
 
         if ( res )
             printf ( "%40s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
@@ -220,6 +221,28 @@ FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_L
 
     if ( res )
         strcpy ( res->file_descriptior, "root" );
+
+    if ( check_name_pass ( res->file_name, filter ) == 0 )
+    {
+        check_free ( res );
+        return NULL;
+    }
+
+    return res;
+}
+
+FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
+{
+    char exe_path[PATH_MAX];
+
+    FILE_LIST * res;
+
+    sprintf ( exe_path, "/proc/%d/exe", pid );
+
+    res = read_file_stat ( exe_path, template );
+
+    if ( res )
+        strcpy ( res->file_descriptior, "exe" );
 
     if ( check_name_pass ( res->file_name, filter ) == 0 )
     {
