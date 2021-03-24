@@ -1,7 +1,7 @@
 #ifndef __FILE_H__
 #define __FILE_H__
 
-#include <bits/local_lim.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 

@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <linux/limits.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +14,9 @@
 int get_cmd_username ( char * command, char * username, pid_t pid );
 int check_command_pass ( const char * command, PROC_FILTER * filter );
 int check_name_pass ( const char * name, const PROC_FILTER * filter );
+
 FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
+FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 
 PID_LIST get_all_pids ( )
 {
@@ -101,33 +104,12 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         template.pid = current_pid;
 
         res = get_cwd ( current_pid, filter, template );
+
         if ( res )
-            printf ( "%40s %5d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
+            printf ( "%40s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
     }
 
     return f_list;
-}
-
-FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
-{
-    char cwd_path[PATH_MAX];
-
-    FILE_LIST * res;
-
-    sprintf ( cwd_path, "/proc/%d/cwd", pid );
-
-    res = read_file_stat ( cwd_path, template );
-
-    if ( res )
-        strcpy ( res->file_descriptior, "cwd" );
-
-    if ( check_name_pass ( res->file_name, filter ) == 0 )
-    {
-        check_free ( res );
-        return NULL;
-    }
-
-    return res;
 }
 
 int get_cmd_username ( char * command, char * username, pid_t pid )
@@ -202,6 +184,50 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
     strcpy ( username, tmp_user_name );
 
     return 1;
+}
+
+FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
+{
+    char cwd_path[PATH_MAX];
+
+    FILE_LIST * res;
+
+    sprintf ( cwd_path, "/proc/%d/cwd", pid );
+
+    res = read_file_stat ( cwd_path, template );
+
+    if ( res )
+        strcpy ( res->file_descriptior, "cwd" );
+
+    if ( check_name_pass ( res->file_name, filter ) == 0 )
+    {
+        check_free ( res );
+        return NULL;
+    }
+
+    return res;
+}
+
+FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
+{
+    char root_path[PATH_MAX];
+
+    FILE_LIST * res;
+
+    sprintf ( root_path, "/proc/%d/root", pid );
+
+    res = read_file_stat ( root_path, template );
+
+    if ( res )
+        strcpy ( res->file_descriptior, "root" );
+
+    if ( check_name_pass ( res->file_name, filter ) == 0 )
+    {
+        check_free ( res );
+        return NULL;
+    }
+
+    return res;
 }
 
 int check_command_pass ( const char * command, PROC_FILTER * filter )
