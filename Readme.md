@@ -10,6 +10,13 @@ make
 ./hw1
 ```
 
+## About the implementation
+### `FD - exe`
+* The real [`lsof(8)`](https://linux.die.net/man/8/lsof) has no fd type `exe`.
+* The homework spec [said](Spec.md#L43) the fd type `exe` is gotten from `/proc/{pid}/exe`.
+* In the real `lsof(8)`, the FD of executable is `txt`.
+* In the real `lsof(8)`, if the real `/proc/{pid}/exe` is not exist, it will not be shown in the result. In this homework implementation, I chose to show it with error text ,` (readlink: File Not Found)`, behind.
+
 ## Reference
 ### Work Relative
 * `/proc`:
@@ -43,6 +50,17 @@ make
         * UNIX and Linux support the idea of a per-process root of the filesystem, set by the `chroot(2)` system call.
         * Need to get the file info that the link point to.
         * **Warn**: Need to check the permission to dereference symbilic link.
+    * `exe`: 
+        * `/proc/{pid}/exe`
+        * Under Linux 2.2 and later
+            * `/proc/{pid}/exe` is a symbolic link containing the actual pathname of the executed command.
+            * If the pathname has been unlinked, the symbolic link will contain the string '(deleted)' appended to the original pathname.
+            * In a multithreaded process, the contents of this symbolic link are not available if the main thread has already terminated.
+            * **Warn**: The real `exe` file may not exist though you can get it by listed `/proc/{pid}` and see its status from `stat()`. Need to check the error code return from `readlink()`.
+        * Under Linux 2.0 and earlier
+            * `/proc/{pid}/exe` is a pointer to the binary which was executed, and appears as a symbolic link.
+            * A `readlink(2)` call on this file under Linux 2.0 returns a string in the format: 
+                `[device]:inode`
 ### Programing Relative
 * Parsing Arguments
     * [`getopt(3)`](https://man7.org/linux/man-pages/man3/getopt.3.html)
