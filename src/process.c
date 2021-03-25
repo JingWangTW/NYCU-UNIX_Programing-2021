@@ -66,6 +66,8 @@ PID_LIST get_all_pids ( )
         }
     }
 
+    closedir ( proc_dir );
+
     res.list = check_realloc ( res.list, sizeof ( pid_t ) * pid_count );
     res.size = pid_count;
 
@@ -106,9 +108,15 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         strcpy ( template.user_name, username );
         template.pid = current_pid;
 
-        get_all_fd_files ( current_pid, filter, template );
+        f_list = get_all_fd_files ( current_pid, filter, template );
 
-        // printf ( "%40s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
+        while ( f_list != NULL )
+        {
+            f_list->command[9] = '\0';
+            printf ( "%15s %7d %20s %8s %8d %8ld %s\n", f_list->command, f_list->pid, f_list->user_name, f_list->file_descriptior, f_list->type, f_list->inode_number, f_list->file_name );
+
+            f_list = f_list->next;
+        }
     }
 
     return f_list;
@@ -272,11 +280,9 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, cons
 
     char fd_dir_path[PATH_MAX];
 
-    FILE_LIST * res = NULL;
-    // FILE_LIST * head = NULL;
-    // FILE_LIST * tail = NULL;
-
-    fd_dir = opendir ( fd_dir_path );
+    FILE_LIST * res  = NULL;
+    FILE_LIST * head = NULL;
+    FILE_LIST * tail = NULL;
 
     sprintf ( fd_dir_path, "/proc/%d/fd", pid );
 
@@ -318,13 +324,23 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, cons
                 continue;
             }
 
-            printf ( "%10s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
+            res->next = NULL;
+
+            if ( head == NULL )
+            {
+                head = tail = res;
+            }
+            else
+            {
+                tail->next = res;
+                tail       = res;
+            }
         }
     }
 
     closedir ( fd_dir );
 
-    return res;
+    return head;
 }
 
 int check_command_pass ( const char * command, PROC_FILTER * filter )
