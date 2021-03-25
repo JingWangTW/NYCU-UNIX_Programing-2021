@@ -32,9 +32,11 @@ struct file_list
 typedef enum file_type FILE_TYPE;
 typedef struct file_list FILE_LIST;
 
-/* read file status, leave file_descriptior filed blank */
-FILE_LIST * read_file_stat ( const char * file_path, const FILE_LIST template );
-void get_fd_str ( pid_t pid, int fd_num, char * buf );
-const char * get_error_message ( int err_no, const char * func_name, char * buffer );
+/* Read file stat from fd and pid number */
+FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LIST template );
+
+/* Read file stat from path, for cwd, exe, root */
+/* Leave FD blank */
+FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST template );
 
 #endif

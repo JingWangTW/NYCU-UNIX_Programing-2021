@@ -163,7 +163,10 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
             password = getpwuid ( user_id );
 
             if ( password == NULL )
+            {
+                fclose ( st_file );
                 return -1;
+            }
 
             strcpy ( tmp_user_name, password->pw_name );
 
@@ -196,15 +199,17 @@ FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LI
 
     sprintf ( cwd_path, "/proc/%d/cwd", pid );
 
-    res = read_file_stat ( cwd_path, template );
+    res = read_file_stat_path ( cwd_path, template );
 
     if ( res )
+    {
         strcpy ( res->file_descriptior, "cwd" );
 
-    if ( check_name_pass ( res->file_name, filter ) == 0 )
-    {
-        check_free ( res );
-        return NULL;
+        if ( check_name_pass ( res->file_name, filter ) == 0 )
+        {
+            check_free ( res );
+            return NULL;
+        }
     }
 
     return res;
@@ -218,15 +223,17 @@ FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_L
 
     sprintf ( root_path, "/proc/%d/root", pid );
 
-    res = read_file_stat ( root_path, template );
+    res = read_file_stat_path ( root_path, template );
 
     if ( res )
+    {
         strcpy ( res->file_descriptior, "root" );
 
-    if ( check_name_pass ( res->file_name, filter ) == 0 )
-    {
-        check_free ( res );
-        return NULL;
+        if ( check_name_pass ( res->file_name, filter ) == 0 )
+        {
+            check_free ( res );
+            return NULL;
+        }
     }
 
     return res;
@@ -240,15 +247,17 @@ FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LI
 
     sprintf ( exe_path, "/proc/%d/exe", pid );
 
-    res = read_file_stat ( exe_path, template );
+    res = read_file_stat_path ( exe_path, template );
 
     if ( res )
+    {
         strcpy ( res->file_descriptior, "exe" );
 
-    if ( check_name_pass ( res->file_name, filter ) == 0 )
-    {
-        check_free ( res );
-        return NULL;
+        if ( check_name_pass ( res->file_name, filter ) == 0 )
+        {
+            check_free ( res );
+            return NULL;
+        }
     }
 
     return res;
@@ -262,9 +271,6 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, cons
     int str_parse;
 
     char fd_dir_path[PATH_MAX];
-    char fd_file_path[PATH_MAX];
-
-    char fd_str[64];
 
     FILE_LIST * res = NULL;
     // FILE_LIST * head = NULL;
@@ -276,6 +282,7 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, cons
 
     fd_dir = opendir ( fd_dir_path );
 
+    // failed to open dir
     if ( fd_dir == NULL )
     {
         res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
@@ -297,12 +304,11 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, cons
     {
         str_parse = sscanf ( fd_file_dirent->d_name, "%d", &fd_num );
 
+        // The d_name contains something else but number
         if ( str_parse != 1 )
             continue;
 
-        sprintf ( fd_file_path, "/proc/%d/fd/%d", pid, fd_num );
-
-        res = read_file_stat ( fd_file_path, template );
+        res = read_file_stat_fd ( pid, fd_num, template );
 
         if ( res )
         {
@@ -312,13 +318,11 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, cons
                 continue;
             }
 
-            get_fd_str ( pid, fd_num, fd_str );
-
-            strcpy ( res->file_descriptior, fd_str );
-
             printf ( "%10s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
         }
     }
+
+    closedir ( fd_dir );
 
     return res;
 }

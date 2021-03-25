@@ -10,103 +10,168 @@
 #include "process.h"
 #include "util.h"
 
+/* Get file stat and realpath from a provided file_path */
+int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path );
+
+/* According to the provided pid and fd_num to set fd string in parm dest */
+void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num );
+
+/* According template, set the common field in dest */
+/* Set value of command, username, pid */
+void set_common_file_stat ( FILE_LIST * dest, const FILE_LIST template );
+
+/* According to file_mode get from stat(), get the respective filetype */
 FILE_TYPE get_file_type ( mode_t file_mode );
 
-FILE_LIST * read_file_stat ( const char * file_path, const FILE_LIST template )
-{
-    int fd_num;
+//
 
-    char real_path[PATH_MAX + 1] = { '\0' };
+FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LIST template )
+{
+    char realpath[PATH_MAX + 1]     = { '\0' };
+    char fd_file_name[PATH_MAX + 1] = { '\0' };
+
     struct stat file_stat;
 
-    FILE_LIST * res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
+    FILE_LIST * res;
+    res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
-    /* common field */
-    strcpy ( res->command, template.command );
-    res->pid = template.pid;
-    strcpy ( res->user_name, template.user_name );
-    res->next = NULL;
+    sprintf ( fd_file_name, "/proc/%d/fd/%d", pid, fd_num );
 
-    if ( lstat ( file_path, &file_stat ) == -1 )
+    set_common_file_stat ( res, template );
+    if ( get_file_stat ( realpath, &file_stat, fd_file_name ) == -1 )
     {
         check_free ( res );
         return NULL;
     }
 
-    if ( S_ISLNK ( file_stat.st_mode ) )
+    strcpy ( res->file_name, realpath );
+    res->type         = get_file_type ( file_stat.st_mode );
+    res->inode_number = file_stat.st_ino;
+
+    set_fd_str_fdinfo ( res, pid, fd_num );
+
+    return res;
+}
+
+FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST template )
+{
+    char realpath[PATH_MAX + 1] = { '\0' };
+
+    struct stat file_stat;
+
+    FILE_LIST * res;
+    res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
+
+    set_common_file_stat ( res, template );
+    if ( get_file_stat ( realpath, &file_stat, file_path ) == -1 )
     {
-        if ( readlink ( file_path, real_path, PATH_MAX ) == -1 )
-        {
-            if ( errno == EACCES )
-            {
-                sprintf ( res->file_name, "%s (readlink: Permission denied)", file_path );
-                res->type         = -1;
-                res->inode_number = -1;
-
-                return res;
-            }
-            else if ( errno == ENOENT )
-            {
-                sprintf ( res->file_name, "%s (readlink: File Not Found)", file_path );
-                res->type         = -1;
-                res->inode_number = -1;
-
-                return res;
-            }
-            else
-            {
-                check_free ( res );
-                return NULL;
-            }
-        }
-
-        // a readble softlink
-        // can't not stat it
-        // A dangling symbolic link
-        // The file has been deleted
-        if ( stat ( real_path, &file_stat ) == -1 )
-        {
-            strcpy ( res->file_name, real_path );
-            res->type = -1;
-
-            fd_num = open ( file_path, O_RDONLY );
-            fstat ( fd_num, &file_stat );
-
-            res->inode_number = file_stat.st_ino;
-
-            close ( fd_num );
-
-            return res;
-        }
-    }
-    else
-    {
-        strcpy ( real_path, file_path );
+        check_free ( res );
+        return NULL;
     }
 
-    strcpy ( res->file_name, real_path );
+    strcpy ( res->file_name, realpath );
     res->type         = get_file_type ( file_stat.st_mode );
     res->inode_number = file_stat.st_ino;
 
     return res;
 }
 
-void get_fd_str ( pid_t pid, int fd_num, char * buf )
+int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path )
+{
+    int fd_num;
+    char error_str[64];
+
+    char * str_search_str;
+
+    // the file path is not exist
+    // just skip it
+    if ( lstat ( file_path, file_stat ) == -1 )
+    {
+        return -1;
+    }
+
+    // path is a symbolic link
+    if ( S_ISLNK ( file_stat->st_mode ) )
+    {
+        // try to read the symbolic link
+        if ( readlink ( file_path, realpath, PATH_MAX ) == -1 )
+        {
+            get_error_message ( errno, "readlink", error_str );
+            sprintf ( realpath, "%s %s", file_path, error_str );
+
+            return 0;
+        }
+
+        // A readble softlink, but can't stat it
+        if ( stat ( realpath, file_stat ) == -1 )
+        {
+            // => It's a dangling symbolic link, the linked file has been deleted
+            // => If readlink() read a symbolic link under /porc, it will append a "deleted" message at the tail
+            str_search_str = strrchr ( realpath, ' ' );
+
+            if ( str_search_str != NULL && strcmp ( str_search_str + 1, "(deleted)" ) == 0 )
+            {
+                fd_num = open ( file_path, O_RDONLY );
+
+                // I can't figure out when this will happen
+                // I just leave it as a failed request
+                if ( fd_num == -1 )
+                {
+                    get_error_message ( errno, "open", error_str );
+                    sprintf ( realpath, "%s %s", file_path, error_str );
+
+                    close ( fd_num );
+
+                    return -1;
+                }
+
+                // I can't figure out when this will happen
+                // I just leave it as a failed request
+                if ( fstat ( fd_num, file_stat ) == -1 )
+                {
+                    get_error_message ( errno, "fstat", error_str );
+                    sprintf ( realpath, "%s %s", file_path, error_str );
+
+                    close ( fd_num );
+
+                    return -1;
+                }
+
+                close ( fd_num );
+            }
+            // I can't figure out when this will happen
+            // I just leave it as a failed request
+            else
+            {
+                get_error_message ( errno, "stat", error_str );
+                sprintf ( realpath, "%s %s", file_path, error_str );
+
+                return -1;
+            }
+        }
+    }
+    else
+    {
+        strcpy ( realpath, file_path );
+    }
+
+    return 0;
+}
+
+void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 {
     int flag;
     char input_str[100];
     char * search_ptr;
-    char fd_path[PATH_MAX];
     char fd_info_path[PATH_MAX];
 
     FILE * fd_info;
 
-    sprintf ( fd_path, "/proc/%d/fd/%d", pid, fd_num );
     sprintf ( fd_info_path, "/proc/%d/fdinfo/%d", pid, fd_num );
 
-    if ( access ( fd_info_path, R_OK ) == -1 || access ( fd_path, R_OK ) == -1 )
+    if ( access ( fd_info_path, R_OK ) == -1 )
     {
-        get_error_message ( errno, "access", buf );
+        get_error_message ( errno, "access", dest->file_name );
         return;
     }
 
@@ -125,23 +190,40 @@ void get_fd_str ( pid_t pid, int fd_num, char * buf )
     }
 
     if ( flag == -1 )
-        return;
-
-    if ( ( flag & O_ACCMODE ) == O_RDONLY )
-        sprintf ( buf, "%dr", fd_num );
-    else if ( ( flag & O_ACCMODE ) == O_WRONLY )
-        sprintf ( buf, "%dw", fd_num );
-    else if ( ( flag & O_ACCMODE ) == O_RDWR )
-        sprintf ( buf, "%du", fd_num );
+    {
+        sprintf ( dest->file_descriptior, "ERR" );
+    }
     else
-        sprintf ( buf, "del" );
+    {
+        if ( ( flag & O_ACCMODE ) == O_RDONLY )
+            sprintf ( dest->file_descriptior, "%dr", fd_num );
+        else if ( ( flag & O_ACCMODE ) == O_WRONLY )
+            sprintf ( dest->file_descriptior, "%dw", fd_num );
+        else if ( ( flag & O_ACCMODE ) == O_RDWR )
+            sprintf ( dest->file_descriptior, "%du", fd_num );
+        else
+            sprintf ( dest->file_descriptior, "ERR" );
+    }
+
+    // check deleted file
+    search_ptr = strrchr ( dest->file_name, ' ' );
+
+    if ( search_ptr != NULL && strcmp ( search_ptr + 1, "(deleted)" ) == 0 )
+    {
+        sprintf ( dest->file_descriptior, "del" );
+    }
+
+    fclose ( fd_info );
 }
 
-const char * get_error_message ( int err_no, const char * func_name, char * buffer )
+void set_common_file_stat ( FILE_LIST * dest, const FILE_LIST template )
 {
-    sprintf ( buffer, "(%s: %s)", func_name, strerror ( err_no ) );
+    /* common field */
+    strcpy ( dest->command, template.command );
+    strcpy ( dest->user_name, template.user_name );
 
-    return buffer;
+    dest->pid  = template.pid;
+    dest->next = NULL;
 }
 
 FILE_TYPE get_file_type ( mode_t file_mode )

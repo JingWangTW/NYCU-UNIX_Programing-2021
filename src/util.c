@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void check_free ( void * ptr )
 {
@@ -31,4 +32,11 @@ void * check_realloc ( void * ptr, const size_t size )
     }
 
     return ptr_new;
+}
+
+const char * get_error_message ( int err_no, const char * func_name, char * buffer )
+{
+    sprintf ( buffer, "(%s: %s)", func_name, strerror ( err_no ) );
+
+    return buffer;
 }
