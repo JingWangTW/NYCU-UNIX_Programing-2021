@@ -61,6 +61,20 @@ make
             * `/proc/{pid}/exe` is a pointer to the binary which was executed, and appears as a symbolic link.
             * A `readlink(2)` call on this file under Linux 2.0 returns a string in the format: 
                 `[device]:inode`
+    * `[0-9]+[rwu]`, `del`:
+        * `/proc/{pid}/fd/{fd_no}`, `/proc/{pid}/fdinfo/{fd_no}`, 
+        * `/proc/{pid}/fd/{fd_no}`
+            * You can get what file has been opened by process in `/proc/{pid}/fd/{fd_no}`. The name of the file under `/proc/{pid}/fd` is the respective file descriptor.
+            * Each file under `/proc/{pid}/fd` is a symbolic link to the actual file.
+        * `/proc/{pid}/fdinfo/{fd_no}`
+            * You can get the file access mode and status flags from the `flags` field in `/proc/{pid}/fdinfo/{fd_no}`.
+            * **Warn**: `flags` field is an octal number.
+        * **Hint**: In some cases, though the file is being opened by a process, it still can be deleted.
+            * Yes, it's possible. In this case,the file still can be readable by the process. And the file would be actually deleted after process terminated. However, you are not able to see it listed in the disk file system.
+            * In this case, the string `(deleted)` would be appended in the result of `readlink()`.
+            * You can get the inode of deleted file (not the link itself) by following two steps:
+                * Get a local fd from the result of `open()` `/proc/{pid}/fd/{fd_no}`. (Just open it.)
+                * Feed the local fd to the `fstat()` and you will get the inode of the deleted file.
 ### Programing Relative
 * Parsing Arguments
     * [`getopt(3)`](https://man7.org/linux/man-pages/man3/getopt.3.html)
@@ -74,6 +88,11 @@ make
 * Uid to username
     * [`getpwuid()`](https://linux.die.net/man/3/getpwuid)
     * Get a pointer to a structure containing the broken-out fields of the record in the password database that matches the user ID `uid`.
+* File Access Mode
+    * [`fcntl.h(0P)`](https://man7.org/linux/man-pages/man0/fcntl.h.0p.html)
+    * A flag pass to [`open(2)`](https://man7.org/linux/man-pages/man2/open.2.html) or a flag get from `/proc/[pid]/fdinfo/{fd_no}`
+    * `O_ACCMODE`: Since the flag mentioned above contain both access mode and status flags. You can use this mask to leave access mode only.
+    * `O_RDONLY`,`O_RDWR`, `O_WRONLY`: Test with these macros, then you can get the access mode of the flag.
 * Limits on File System Capacity
     * [limits.h(0p)](https://man7.org/linux/man-pages/man0/limits.h.0p.html)
     * `NAME_MAX`: The limit a file name component, **not including** the terminating null character.
