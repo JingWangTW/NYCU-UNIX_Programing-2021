@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 #include <linux/limits.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -18,6 +19,7 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter );
 FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
+FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 
 PID_LIST get_all_pids ( )
 {
@@ -79,7 +81,7 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
     pid_t current_pid;
 
     FILE_LIST template;
-    FILE_LIST * res    = NULL;
+    // FILE_LIST * res    = NULL;
     FILE_LIST * f_list = NULL;
 
     for ( proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
@@ -104,10 +106,9 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         strcpy ( template.user_name, username );
         template.pid = current_pid;
 
-        res = get_exe ( current_pid, filter, template );
+        get_all_fd_files ( current_pid, filter, template );
 
-        if ( res )
-            printf ( "%40s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
+        // printf ( "%40s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
     }
 
     return f_list;
@@ -248,6 +249,75 @@ FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LI
     {
         check_free ( res );
         return NULL;
+    }
+
+    return res;
+}
+
+FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
+{
+    DIR * fd_dir;
+    struct dirent * fd_file_dirent;
+    int fd_num;
+    int str_parse;
+
+    char fd_dir_path[PATH_MAX];
+    char fd_file_path[PATH_MAX];
+
+    char fd_str[64];
+
+    FILE_LIST * res = NULL;
+    // FILE_LIST * head = NULL;
+    // FILE_LIST * tail = NULL;
+
+    fd_dir = opendir ( fd_dir_path );
+
+    sprintf ( fd_dir_path, "/proc/%d/fd", pid );
+
+    fd_dir = opendir ( fd_dir_path );
+
+    if ( fd_dir == NULL )
+    {
+        res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
+        strcpy ( res->command, template.command );
+        res->pid = template.pid;
+        strcpy ( res->user_name, template.user_name );
+
+        strcpy ( res->file_name, fd_dir_path );
+        get_error_message ( errno, "opendir", res->file_name + strlen ( res->file_name ) );
+
+        res->type         = -1;
+        res->inode_number = -1;
+        res->next         = NULL;
+
+        return res;
+    }
+
+    while ( ( fd_file_dirent = readdir ( fd_dir ) ) != NULL )
+    {
+        str_parse = sscanf ( fd_file_dirent->d_name, "%d", &fd_num );
+
+        if ( str_parse != 1 )
+            continue;
+
+        sprintf ( fd_file_path, "/proc/%d/fd/%d", pid, fd_num );
+
+        res = read_file_stat ( fd_file_path, template );
+
+        if ( res )
+        {
+            if ( check_name_pass ( res->file_name, filter ) == 0 )
+            {
+                check_free ( res );
+                continue;
+            }
+
+            get_fd_str ( pid, fd_num, fd_str );
+
+            strcpy ( res->file_descriptior, fd_str );
+
+            printf ( "%10s %7d %20s %8s %8d %8ld %s\n", res->command, res->pid, res->user_name, res->file_descriptior, res->type, res->inode_number, res->file_name );
+        }
     }
 
     return res;

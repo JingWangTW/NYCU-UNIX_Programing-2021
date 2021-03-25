@@ -34,5 +34,7 @@ typedef struct file_list FILE_LIST;
 
 /* read file status, leave file_descriptior filed blank */
 FILE_LIST * read_file_stat ( const char * file_path, const FILE_LIST template );
+void get_fd_str ( pid_t pid, int fd_num, char * buf );
+const char * get_error_message ( int err_no, const char * func_name, char * buffer );
 
 #endif
