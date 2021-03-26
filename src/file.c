@@ -24,7 +24,7 @@ void set_common_file_stat ( FILE_LIST * dest, const FILE_LIST template );
 int find_duplicate_file ( const FILE_LIST * head, const ino_t inode_num, const char * file_path );
 
 /* According to file_mode get from stat(), get the respective filetype */
-FILE_TYPE get_file_type ( mode_t file_mode );
+FILE_TYPE get_file_type ( const struct stat * file_status, const char * file_path );
 
 /* Check if provided file_path has been appended "(deleted)" */
 int check_filename_append_deleted ( const char * file_path );
@@ -33,6 +33,7 @@ int check_filename_append_deleted ( const char * file_path );
 
 FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LIST template )
 {
+    int get_stat_res;
     char realpath[PATH_MAX + 1]     = { '\0' };
     char fd_file_name[PATH_MAX + 1] = { '\0' };
 
@@ -43,16 +44,13 @@ FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LI
 
     sprintf ( fd_file_name, "/proc/%d/fd/%d", pid, fd_num );
 
-    set_common_file_stat ( res, template );
-    if ( get_file_stat ( realpath, &file_stat, fd_file_name ) == -1 )
-    {
-        check_free ( res );
-        return NULL;
-    }
+    get_stat_res = get_file_stat ( realpath, &file_stat, fd_file_name );
 
+    set_common_file_stat ( res, template );
     strcpy ( res->file_name, realpath );
-    res->type         = get_file_type ( file_stat.st_mode );
-    res->inode_number = file_stat.st_ino;
+
+    res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
+    res->inode_number = get_stat_res == -1 ? 0 : file_stat.st_ino;
 
     set_fd_str_fdinfo ( res, pid, fd_num );
 
@@ -61,6 +59,7 @@ FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LI
 
 FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST template )
 {
+    int get_stat_res;
     char realpath[PATH_MAX + 1] = { '\0' };
 
     struct stat file_stat;
@@ -68,31 +67,28 @@ FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST templa
     FILE_LIST * res;
     res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
-    set_common_file_stat ( res, template );
-    if ( get_file_stat ( realpath, &file_stat, file_path ) == -1 )
-    {
-        check_free ( res );
-        return NULL;
-    }
+    get_stat_res = get_file_stat ( realpath, &file_stat, file_path );
 
+    set_common_file_stat ( res, template );
     strcpy ( res->file_name, realpath );
-    res->type         = get_file_type ( file_stat.st_mode );
-    res->inode_number = file_stat.st_ino;
+
+    res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
+    res->inode_number = get_stat_res == -1 ? 0 : file_stat.st_ino;
 
     return res;
 }
 
 FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
 {
-    char error_str[64];
+    int get_stat_res;
+    int parse_result;
 
     char input_str[1000];
-    int parse_result;
-    int check_duplicate;
-    ino_t inode_num;
-
     char input_path[PATH_MAX + 1];
+    char real_path[PATH_MAX + 1];
     char maps_file_path[PATH_MAX + 1];
+
+    ino_t inode_num;
 
     FILE * maps_file;
 
@@ -106,44 +102,48 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
 
     maps_file = fopen ( maps_file_path, "r" );
 
+    // failed to open maps file
+    // may have some permission problems
     if ( maps_file == NULL )
+    {
         return NULL;
+    }
 
+    // read file line by line
     while ( fscanf ( maps_file, "%999[^\n] ", input_str ) != EOF )
     {
+        // parse required field only
         parse_result = sscanf ( input_str, "%*x-%*x %*4[-rwxsp]%*x%*x:%*x%lu %[^\n] ", &inode_num, input_path );
 
+        // check if parsed success
         if ( parse_result != 2 )
             continue;
 
-        check_duplicate = find_duplicate_file ( head, inode_num, input_path );
+        // get file stat and its real path
+        get_stat_res = get_file_stat ( real_path, &file_status, input_path );
 
-        if ( check_duplicate )
+        // A file may have multiple record in the maps file due to it the file may be seperated to different memory region
+        if ( find_duplicate_file ( head, inode_num, real_path ) )
             continue;
 
+        // a new availale file found
+        // record it
         res               = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
         res->inode_number = inode_num;
         res->next         = NULL;
 
         set_common_file_stat ( res, template );
-        strcpy ( res->file_name, input_path );
 
-        if ( check_filename_append_deleted ( input_path ) )
+        // check whether is a delete file
+        if ( check_filename_append_deleted ( real_path ) )
             strcpy ( res->file_descriptior, "del" );
         else
             strcpy ( res->file_descriptior, "mem" );
 
-        if ( stat ( input_path, &file_status ) == -1 )
-        {
-            get_error_message ( errno, "stat", error_str );
-            sprintf ( res->file_name, "%s %s", input_path, error_str );
-            res->type = -1;
-        }
-        else
-        {
-            res->type = get_file_type ( file_status.st_mode );
-        }
+        strcpy ( res->file_name, real_path );
+        res->type = get_file_type ( get_stat_res == -1 ? NULL : &file_status, input_path );
 
+        // append the record to the list
         if ( head == NULL )
             head = tail = res;
         else
@@ -161,14 +161,14 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
 int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path )
 {
     int fd_num;
-    char error_str[64];
 
-    char * str_search_str;
+    char error_str[64];
 
     // the file path is not exist
     // just skip it
     if ( lstat ( file_path, file_stat ) == -1 )
     {
+        strcpy ( realpath, file_path );
         return -1;
     }
 
@@ -176,12 +176,13 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     if ( S_ISLNK ( file_stat->st_mode ) )
     {
         // try to read the symbolic link
+        // the file is exist, but wrong with its link
         if ( readlink ( file_path, realpath, PATH_MAX ) == -1 )
         {
             get_error_message ( errno, "readlink", error_str );
             sprintf ( realpath, "%s %s", file_path, error_str );
 
-            return 0;
+            return -1;
         }
 
         // A readble softlink, but can't stat it
@@ -189,51 +190,48 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
         {
             // => It's a dangling symbolic link, the linked file has been deleted
             // => If readlink() read a symbolic link under /porc, it will append a "deleted" message at the tail
-            str_search_str = strrchr ( realpath, ' ' );
-
-            if ( str_search_str != NULL && strcmp ( str_search_str + 1, "(deleted)" ) == 0 )
+            if ( check_filename_append_deleted ( realpath ) )
             {
                 fd_num = open ( file_path, O_RDONLY );
 
-                // I can't figure out when this will happen
+                // May have some permission problem
                 // I just leave it as a failed request
                 if ( fd_num == -1 )
                 {
                     get_error_message ( errno, "open", error_str );
                     sprintf ( realpath, "%s %s", file_path, error_str );
 
-                    close ( fd_num );
-
                     return -1;
                 }
-
-                // I can't figure out when this will happen
-                // I just leave it as a failed request
-                if ( fstat ( fd_num, file_stat ) == -1 )
+                // I can't figure out when this will happen, I can open a file, but I can't stat it ???
+                // Just leave this error check, more works is better than segment fault happened
+                else if ( fstat ( fd_num, file_stat ) == -1 )
                 {
                     get_error_message ( errno, "fstat", error_str );
                     sprintf ( realpath, "%s %s", file_path, error_str );
 
-                    close ( fd_num );
-
                     return -1;
+                }
+                else
+                {
+                    // success find correct file and it's stat
+                    // I have nothing to do
+                    // I just want to leave this message to have correct view of this flow
                 }
 
                 close ( fd_num );
             }
-            // I can't figure out when this will happen
-            // I just leave it as a failed request
+            // The file may be something like [pipe:id]
             else
             {
-                get_error_message ( errno, "stat", error_str );
-                sprintf ( realpath, "%s %s", file_path, error_str );
-
+                memset ( file_stat, 0, sizeof ( struct stat ) );
                 return -1;
             }
         }
     }
     else
     {
+        // It's a normal file, the real path is just the same as file_path
         strcpy ( realpath, file_path );
     }
 
@@ -324,27 +322,41 @@ int find_duplicate_file ( const FILE_LIST * head, const ino_t inode_num, const c
     return 0;
 }
 
-FILE_TYPE get_file_type ( mode_t file_mode )
+FILE_TYPE get_file_type ( const struct stat * file_status, const char * file_path )
 {
-    switch ( file_mode & S_IFMT )
+    if ( strstr ( file_path, "pipe" ) != NULL )
     {
-        case S_IFDIR:
-            return DIRECTOR;
-
-        case S_IFREG:
-            return REGULAR;
-
-        case S_IFCHR:
-            return CHARACTER;
-
-        case S_IFIFO:
-            return FIFO_FILE;
-
-        case S_IFSOCK:
-            return SOCKET_FILE;
-
-        default:
+        return FIFO_FILE;
+    }
+    else if ( strstr ( file_path, "socket" ) != NULL )
+    {
+        return SOCKET_FILE;
+    }
+    else
+    {
+        if ( file_status == NULL )
             return UNKNOWN_FILE;
+
+        switch ( file_status->st_mode & S_IFMT )
+        {
+            case S_IFDIR:
+                return DIRECTOR;
+
+            case S_IFREG:
+                return REGULAR;
+
+            case S_IFCHR:
+                return CHARACTER;
+
+            case S_IFIFO:
+                return FIFO_FILE;
+
+            case S_IFSOCK:
+                return SOCKET_FILE;
+
+            default:
+                return UNKNOWN_FILE;
+        }
     }
 }
 
