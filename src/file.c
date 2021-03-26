@@ -240,6 +240,11 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                     strcpy ( realpath, special_type );
                     file_stat->st_ino = special_inode;
                 }
+                // something like: "anon_inode:<file-type>"
+                else if ( sscanf ( realpath, "anon_inode:%s", special_type ) == 1 )
+                {
+                    strcpy ( realpath, special_type );
+                }
 
                 return -1;
             }
