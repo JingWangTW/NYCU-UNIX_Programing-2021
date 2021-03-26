@@ -75,6 +75,22 @@ make
             * You can get the inode of deleted file (not the link itself) by following two steps:
                 * Get a local fd from the result of `open()` `/proc/{pid}/fd/{fd_no}`. (Just open it.)
                 * Feed the local fd to the `fstat()` and you will get the inode of the deleted file.
+
+    * `maps`, `del`:
+        * `/proc/{pid}/maps`
+            * Containing the currently mapped memory regions and their access permissions.
+            * Format: 
+                ```
+                address           perms offset  dev   inode       pathname
+                00400000-00452000 r-xp 00000000 08:02 173521      /usr/bin/dbus-daemon
+                00651000-00652000 r--p 00051000 08:02 173521      /usr/bin/dbus-daemon
+                00652000-00655000 rw-p 00052000 08:02 173521      /usr/bin/dbus-daemon
+                ```
+            * The value in `perms` field would be `r`(read), `w`(write), `x`(execute), `s`(shared), `p`(private).
+            * There are some pseudo-paths:
+                * `[stack]`, `[stack:<tid>]`, `[vsdo]`, `[heap]`
+        * `pathname` may be appended `(deleted)` indicate the file has been deleted. Need to change `FD` field from `mem` to `del`.
+
 ### Programing Relative
 * Parsing Arguments
     * [`getopt(3)`](https://man7.org/linux/man-pages/man3/getopt.3.html)
