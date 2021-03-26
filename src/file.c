@@ -38,19 +38,19 @@ FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LI
     char fd_file_name[PATH_MAX + 1] = { '\0' };
 
     struct stat file_stat;
-
     FILE_LIST * res;
-    res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     sprintf ( fd_file_name, "/proc/%d/fd/%d", pid, fd_num );
 
     get_stat_res = get_file_stat ( realpath, &file_stat, fd_file_name );
 
+    res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
+
     set_common_file_stat ( res, template );
     strcpy ( res->file_name, realpath );
 
     res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
-    res->inode_number = get_stat_res == -1 ? 0 : file_stat.st_ino;
+    res->inode_number = file_stat.st_ino;
 
     set_fd_str_fdinfo ( res, pid, fd_num );
 
@@ -65,15 +65,16 @@ FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST templa
     struct stat file_stat;
 
     FILE_LIST * res;
-    res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     get_stat_res = get_file_stat ( realpath, &file_stat, file_path );
+
+    res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     set_common_file_stat ( res, template );
     strcpy ( res->file_name, realpath );
 
     res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
-    res->inode_number = get_stat_res == -1 ? 0 : file_stat.st_ino;
+    res->inode_number = file_stat.st_ino;
 
     return res;
 }
@@ -117,6 +118,10 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
 
         // check if parsed success
         if ( parse_result != 2 )
+            continue;
+
+        // skip pseudo-path
+        if ( strlen ( input_path ) == 0 || input_path[0] == '[' )
             continue;
 
         // get file stat and its real path
@@ -163,6 +168,9 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     int fd_num;
 
     char error_str[64];
+
+    char special_type[64];
+    ino_t special_inode;
 
     // the file path is not exist
     // just skip it
@@ -221,10 +229,18 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
 
                 close ( fd_num );
             }
-            // The file may be something like [pipe:id]
+            // The file may be something like [pipe:inode]
             else
             {
                 memset ( file_stat, 0, sizeof ( struct stat ) );
+
+                // something lke: [pipe:inode] [socket:inode]
+                if ( sscanf ( realpath, "%[a-z]:[%ld]", special_type, &special_inode ) == 2 )
+                {
+                    strcpy ( realpath, special_type );
+                    file_stat->st_ino = special_inode;
+                }
+
                 return -1;
             }
         }
