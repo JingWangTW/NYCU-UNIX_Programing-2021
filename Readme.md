@@ -40,6 +40,20 @@ make
     * I chose to show `NOFD`, `unknown` in `FD`, `TYPE` field respectively.
     * In `NAME`  field, I chose to follow the real `lsof(8)` to show the `<file-type>` only.
 
+### Sorting Output
+* There are no restricted rules about the sorting of result.
+* In this implementation, it was sorted by follwing order:
+    * `PID`
+    * `TYPE`
+        * `cwd`
+        * `root`
+        * `exe`
+        * `mem`
+            * Follow by the order in `/proc/{pid}/maps`
+        * `del`
+        * `[0-9]+[rwu]`
+            * Follow by the order get from `readdir()` with `/proc/{pid}/fd`
+        * `NOFD`
 ## Reference
 ### Work Relative
 * `/proc`:
