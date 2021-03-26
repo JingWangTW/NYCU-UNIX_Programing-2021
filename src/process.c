@@ -15,8 +15,10 @@
 int get_cmd_username ( char * command, char * username, pid_t pid );
 int check_command_pass ( const char * command, PROC_FILTER * filter );
 int check_name_pass ( const char * name, const PROC_FILTER * filter );
+int check_type_pass ( FILE_TYPE type, const PROC_FILTER * filter );
 void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail );
 FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems );
+FILE_LIST * type_filter ( const PROC_FILTER * filter, FILE_LIST * all );
 
 FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
@@ -135,6 +137,8 @@ PROC_FILES_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         res = get_mem ( current_pid, filter, template );
         res = remove_dup_files_in_mems ( proc_head, res );
         append_list ( res, &proc_head, &proc_tail );
+
+        proc_head = type_filter ( filter, proc_head );
 
         if ( proc_head != NULL )
         {
@@ -456,6 +460,47 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter )
     return 1;
 }
 
+int check_type_pass ( FILE_TYPE type, const PROC_FILTER * filter )
+{
+    if ( filter->type_filter )
+    {
+        if ( strcmp ( filter->type_filter, "REG" ) == 0 )
+        {
+            if ( type == REGULAR )
+                return 1;
+        }
+        else if ( strcmp ( filter->type_filter, "CHR" ) == 0 )
+        {
+            if ( type == CHARACTER )
+                return 1;
+        }
+        else if ( strcmp ( filter->type_filter, "DIR" ) == 0 )
+        {
+            if ( type == DIRECTOR )
+                return 1;
+        }
+        else if ( strcmp ( filter->type_filter, "FIFO" ) == 0 )
+        {
+            if ( type == FIFO_FILE )
+                return 1;
+        }
+        else if ( strcmp ( filter->type_filter, "SOCK" ) == 0 )
+        {
+            if ( type == SOCKET_FILE )
+                return 1;
+        }
+        else if ( strcmp ( filter->type_filter, "unknown" ) == 0 )
+        {
+            if ( type == UNKNOWN_FILE )
+                return 1;
+        }
+
+        return 0;
+    }
+
+    return 1;
+}
+
 void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail )
 {
     if ( target == NULL )
@@ -489,27 +534,52 @@ FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
 {
     FILE_LIST * mems_head = mems;
     FILE_LIST * mems_tail = mems;
+    FILE_LIST * mems_prev = NULL;
 
     const FILE_LIST * all_tail = all;
+    ino_t current_cmp_inode;
+    const char * current_cmp_name;
 
     while ( all_tail != NULL && mems_head != NULL )
     {
         mems_tail = mems_head;
+        mems_prev = NULL;
+
+        current_cmp_inode = all_tail->inode_number;
+        current_cmp_name  = all_tail->file_name;
+
+        if ( mems_head != NULL && mems_head->inode_number == current_cmp_inode && strcmp ( mems_head->file_name, current_cmp_name ) == 0 )
+        {
+            check_free ( mems_tail );
+
+            mems_head = mems_head->next;
+            mems_tail = mems_head;
+
+            all_tail = all_tail->next;
+            continue;
+        }
+
+        if ( mems_head == NULL )
+        {
+            all_tail = all_tail->next;
+            continue;
+        }
+
+        mems_tail = mems_head->next;
+        mems_prev = mems_head;
 
         while ( mems_tail != NULL )
         {
-            if ( mems_tail->inode_number == all_tail->inode_number && strcmp ( mems_tail->file_name, all_tail->file_name ) == 0 )
+            if ( mems_tail->inode_number == current_cmp_inode && strcmp ( mems_tail->file_name, current_cmp_name ) == 0 )
             {
-                if ( mems_head == mems_tail )
-                {
-                    mems_head = mems_tail->next;
-                }
-
-                check_free ( mems_tail );
+                mems_tail = mems_tail->next;
+                check_free ( mems_prev->next );
+                mems_prev->next = mems_tail;
 
                 break;
             }
 
+            mems_prev = mems_tail;
             mems_tail = mems_tail->next;
         }
 
@@ -517,4 +587,45 @@ FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
     }
 
     return mems_head;
+}
+
+FILE_LIST * type_filter ( const PROC_FILTER * filter, FILE_LIST * all )
+{
+    FILE_LIST * head = all;
+    FILE_LIST * tail = all;
+    FILE_LIST * prev = NULL;
+
+    if ( filter->type_filter )
+    {
+        while ( head != NULL && check_type_pass ( head->type, filter ) == 0 )
+        {
+            check_free ( tail );
+
+            head = head->next;
+            tail = head;
+        }
+
+        if ( head == NULL )
+            return NULL;
+
+        prev = head;
+        tail = head->next;
+
+        while ( tail != NULL )
+        {
+            if ( check_type_pass ( tail->type, filter ) == 0 )
+            {
+                tail = tail->next;
+                check_free ( prev->next );
+                prev->next = tail;
+            }
+            else
+            {
+                prev = tail;
+                tail = tail->next;
+            }
+        }
+    }
+
+    return head;
 }
