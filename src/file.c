@@ -163,6 +163,42 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
     return head;
 }
 
+void get_type_str ( const FILE_LIST * file, char * buf )
+{
+    switch ( file->type )
+    {
+        case DIRECTOR:
+            sprintf ( buf, "DIR" );
+            break;
+        case CHARACTER:
+            sprintf ( buf, "CHR" );
+            break;
+        case REGULAR:
+            sprintf ( buf, "REG" );
+            break;
+        case FIFO_FILE:
+            sprintf ( buf, "FIFO" );
+            break;
+        case SOCKET_FILE:
+            sprintf ( buf, "SOCK" );
+            break;
+        case UNKNOWN_FILE:
+            sprintf ( buf, "unknown" );
+            break;
+        default:
+            buf[0] = '\0';
+            break;
+    }
+}
+
+void get_node_str ( const FILE_LIST * file, char * buf )
+{
+    if ( file->type == UNKNOWN_FILE || file->type == (FILE_TYPE) -1 )
+        buf[0] = '\0';
+    else
+        sprintf ( buf, "%ld", file->inode_number );
+}
+
 int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path )
 {
     int fd_num;

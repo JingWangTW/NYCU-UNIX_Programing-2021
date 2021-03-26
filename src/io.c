@@ -48,6 +48,61 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
     return res;
 }
 
+void print_result ( FILE_LIST * file_list )
+{
+    char forma_string[100];
+    char filed_buffer[1000];
+    char type_buffer[16];
+    char node_buffer[16];
+
+    // the initial value is the length of col title
+    size_t max_command = 7;
+    size_t max_pid     = 3;
+    size_t max_user    = 4;
+    size_t max_fd      = 2;
+    const int max_type = 7;  // unknown
+    size_t max_node    = 4;
+
+    FILE_LIST * head;
+
+    if ( file_list == NULL )
+        return;
+
+    head = file_list;
+    while ( head != NULL )
+    {
+        max_command = MIN ( MAX ( max_command, strlen ( head->file_name ) ), (size_t) 9 );
+
+        sprintf ( filed_buffer, "%d", head->pid );
+        max_pid = MAX ( max_pid, strlen ( filed_buffer ) );
+
+        max_user = MAX ( max_user, strlen ( head->user_name ) );
+
+        max_fd = MAX ( max_fd, strlen ( head->file_descriptior ) );
+
+        sprintf ( filed_buffer, "%ld", head->inode_number );
+        max_node = MAX ( max_node, strlen ( filed_buffer ) );
+
+        head = head->next;
+    }
+
+    printf ( "%-*s %-*s %-*s %-*s %-*s %-*s %s\n", (int) max_command, "COMMAND", (int) max_pid, "PID", (int) max_user, "USER", (int) max_fd, "FD", max_type, "TYPE", (int) max_node, "NODE", "NAME" );
+
+    sprintf ( forma_string, "%%-%lds %%-%ldd %%-%lds %%-%lds %%-%ds %%-%lds %%s\n", max_command, max_pid, max_user, max_fd, max_type, max_node );
+
+    head = file_list;
+    while ( head != NULL )
+    {
+        get_type_str ( head, type_buffer );
+        get_node_str ( head, node_buffer );
+
+        head->command[9] = '\0';
+
+        printf ( forma_string, head->command, head->pid, head->user_name, head->file_descriptior, type_buffer, node_buffer, head->file_name );
+        head = head->next;
+    }
+}
+
 void copy_from_optarg ( char ** dest )
 {
     if ( *dest )

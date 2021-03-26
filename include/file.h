@@ -49,4 +49,8 @@ FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST templa
 /* According pid, read /proc/{pid}/maps */
 FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template );
 
+void get_type_str ( const FILE_LIST * file, char * buf );
+
+void get_node_str ( const FILE_LIST * file, char * buf );
+
 #endif

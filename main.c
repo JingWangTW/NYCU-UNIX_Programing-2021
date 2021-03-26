@@ -24,14 +24,17 @@ int main ( const int argc, char * const * argv )
     {
         file = all_porc_files->head;
 
-        while ( file != NULL )
-        {
-            file->command[9] = '\0';
+        if ( file )
+            print_result ( file );
 
-            printf ( "%10s %7d %20s %8s %8d %8ld %s\n", file->command, file->pid, file->user_name, file->file_descriptior, file->type, file->inode_number, file->file_name );
+        // while ( file != NULL )
+        // {
+        //     file->command[9] = '\0';
 
-            file = file->next;
-        }
+        //     printf ( "%10s %7d %20s %8s %8d %8ld %s\n", file->command, file->pid, file->user_name, file->file_descriptior, file->type, file->inode_number, file->file_name );
+
+        //     file = file->next;
+        // }
 
         all_porc_files = all_porc_files->next;
     }

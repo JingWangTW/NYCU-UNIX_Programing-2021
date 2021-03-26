@@ -3,6 +3,22 @@
 
 #include <stddef.h>
 
+// MAX macro with type safe
+#define MAX( a, b )                  \
+    ( {                              \
+        __typeof__ ( a ) _a = ( a ); \
+        __typeof__ ( b ) _b = ( b ); \
+        _a > _b ? _a : _b;           \
+    } )
+
+// MIN macro with type safe
+#define MIN( a, b )                  \
+    ( {                              \
+        __typeof__ ( a ) _a = ( a ); \
+        __typeof__ ( b ) _b = ( b ); \
+        _a < _b ? _a : _b;           \
+    } )
+
 /* Checking if pointer is NULL before release it.*/
 void check_free ( void * ptr );
 
