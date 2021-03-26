@@ -111,13 +111,13 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
 
         f_list = get_mem ( current_pid, filter, template );
 
-        // while ( f_list != NULL )
-        // {
-        //     f_list->command[9] = '\0';
-        //     printf ( "%15s %7d %20s %8s %8d %8ld %s\n", f_list->command, f_list->pid, f_list->user_name, f_list->file_descriptior, f_list->type, f_list->inode_number, f_list->file_name );
+        while ( f_list != NULL )
+        {
+            f_list->command[9] = '\0';
+            printf ( "%15s %7d %20s %8s %8d %8ld %s\n", f_list->command, f_list->pid, f_list->user_name, f_list->file_descriptior, f_list->type, f_list->inode_number, f_list->file_name );
 
-        //     f_list = f_list->next;
-        // }
+            f_list = f_list->next;
+        }
     }
 
     return f_list;
@@ -272,29 +272,35 @@ FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LI
     return res;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wformat="
-
 FILE_LIST * get_mem ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
 {
     FILE_LIST * head;
+    FILE_LIST * tail;
+    FILE_LIST * temp;
 
     head = read_maps_file ( pid, template );
+    tail = head;
 
-    while ( head != NULL )
+    while ( tail != NULL )
     {
-        head->command[9] = '\0';
-        printf ( "%15s %7d %20s %8s %8d %8ld %s\n", head->command, head->pid, head->user_name, head->file_descriptior, head->type, head->inode_number, head->file_name );
+        if ( check_name_pass ( tail->file_name, filter ) == 0 )
+        {
+            temp = tail->next;
 
-        head = head->next;
+            if ( head == tail )
+                head = temp;
+
+            check_free ( tail );
+            tail = temp;
+        }
+        else
+        {
+            tail = tail->next;
+        }
     }
 
     return head;
 }
-
-#pragma GCC diagnostic pop
 
 FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
 {
