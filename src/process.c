@@ -458,6 +458,9 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter )
 
 void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail )
 {
+    if ( target == NULL )
+        return;
+
     if ( *head == NULL )
     {
         *head = target;
@@ -477,6 +480,9 @@ void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail )
         ( *tail )->next = target;
         *tail           = target;
     }
+
+    while ( ( *tail )->next != NULL )
+        ( *tail ) = ( *tail )->next;
 }
 
 FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
