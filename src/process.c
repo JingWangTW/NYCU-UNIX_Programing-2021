@@ -317,7 +317,7 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
         strcpy ( res->command, template.command );
         res->pid = template.pid;
         strcpy ( res->user_name, template.user_name );
-
+        strcpy ( res->file_descriptior, "NOFD" );
         strcpy ( res->file_name, fd_dir_path );
         get_error_message ( errno, "opendir", res->file_name + strlen ( res->file_name ) );
 
