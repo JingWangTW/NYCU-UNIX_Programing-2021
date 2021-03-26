@@ -19,6 +19,7 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter );
 FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
+FILE_LIST * get_mem ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 
 PID_LIST get_all_pids ( )
@@ -108,15 +109,15 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         strcpy ( template.user_name, username );
         template.pid = current_pid;
 
-        f_list = get_all_fd_files ( current_pid, filter, template );
+        f_list = get_mem ( current_pid, filter, template );
 
-        while ( f_list != NULL )
-        {
-            f_list->command[9] = '\0';
-            printf ( "%15s %7d %20s %8s %8d %8ld %s\n", f_list->command, f_list->pid, f_list->user_name, f_list->file_descriptior, f_list->type, f_list->inode_number, f_list->file_name );
+        // while ( f_list != NULL )
+        // {
+        //     f_list->command[9] = '\0';
+        //     printf ( "%15s %7d %20s %8s %8d %8ld %s\n", f_list->command, f_list->pid, f_list->user_name, f_list->file_descriptior, f_list->type, f_list->inode_number, f_list->file_name );
 
-            f_list = f_list->next;
-        }
+        //     f_list = f_list->next;
+        // }
     }
 
     return f_list;
@@ -270,6 +271,30 @@ FILE_LIST * get_exe ( const pid_t pid, const PROC_FILTER * filter, const FILE_LI
 
     return res;
 }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wformat="
+
+FILE_LIST * get_mem ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
+{
+    FILE_LIST * head;
+
+    head = read_maps_file ( pid, template );
+
+    while ( head != NULL )
+    {
+        head->command[9] = '\0';
+        printf ( "%15s %7d %20s %8s %8d %8ld %s\n", head->command, head->pid, head->user_name, head->file_descriptior, head->type, head->inode_number, head->file_name );
+
+        head = head->next;
+    }
+
+    return head;
+}
+
+#pragma GCC diagnostic pop
 
 FILE_LIST * get_all_fd_files ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template )
 {

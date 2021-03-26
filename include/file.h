@@ -39,4 +39,7 @@ FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LI
 /* Leave FD blank */
 FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST template );
 
+/* According pid, read /proc/{pid}/maps */
+FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template );
+
 #endif
