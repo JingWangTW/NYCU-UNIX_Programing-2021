@@ -11,6 +11,12 @@ make
 ```
 
 ## About the implementation
+
+### `COMMAND`
+* In the real `lsof(8)`, the `COMMAND` field will only show first nine characters of UNIX command associated with the process.
+* There has no relative restriction in the homework spec. (Maybe just print it all. 🤔)
+* I chose to follow `lsof(8)`, jsut print first nine characters.
+
 ### `FD` - `exe`
 * The real [`lsof(8)`](https://linux.die.net/man/8/lsof) has no fd type `exe`.
 * The homework spec [said](Spec.md#L43) the fd type `exe` is gotten from `/proc/{pid}/exe`.
@@ -33,7 +39,6 @@ make
 * In this homework implementation
     * I chose to show `NOFD`, `unknown` in `FD`, `TYPE` field respectively.
     * In `NAME`  field, I chose to follow the real `lsof(8)` to show the `<file-type>` only.
-
 
 ## Reference
 ### Work Relative
