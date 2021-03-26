@@ -11,11 +11,29 @@ make
 ```
 
 ## About the implementation
-### `FD - exe`
+### `FD` - `exe`
 * The real [`lsof(8)`](https://linux.die.net/man/8/lsof) has no fd type `exe`.
 * The homework spec [said](Spec.md#L43) the fd type `exe` is gotten from `/proc/{pid}/exe`.
 * In the real `lsof(8)`, the FD of executable is `txt`.
-* In the real `lsof(8)`, if the real `/proc/{pid}/exe` is not exist, it will not be shown in the result. In this homework implementation, I chose to show it with error text ,` (readlink: File Not Found)`, behind.
+* In the real `lsof(8)`, if the real `/proc/{pid}/exe` is not exist, it will not be shown in the result.
+* In this homework implementation, I chose to show it with error text ,` (readlink: File Not Found)`, behind.
+
+### `FD` - `mem`
+* There are some pseudo-paths under in file `/proc/{pid}/maps`.
+* In the real `lsof(8)`, these files would not be printed.
+* There has no instruction in homework spec for this case.
+* In this homework implementation, I chose to not show these info either.
+
+### `TYPE`, `FD`
+* In some cases, the symbolic file under `/proc/{pid}/fd` may link to a fd that have no inode.
+* These fd are produced by `bpf(2)`, `epoll_create(2)`, etc.
+* The result of `readlink` for these files would be formatted as  
+    `anon_inode:<file-type>`
+* The homework spec only [said](Spec.md#51) when `/proc/{pid}/fd` is not accessible we are allowed to show `NOFD` in `FD` field. Spec doesn't cover this case.
+* In this homework implementation
+    * I chose to show `NOFD`, `unknown` in `FD`, `TYPE` field respectively.
+    * In `NAME`  field, I chose to follow the real `lsof(8)` to show the `<file-type>` only.
+
 
 ## Reference
 ### Work Relative
@@ -75,6 +93,13 @@ make
             * You can get the inode of deleted file (not the link itself) by following two steps:
                 * Get a local fd from the result of `open()` `/proc/{pid}/fd/{fd_no}`. (Just open it.)
                 * Feed the local fd to the `fstat()` and you will get the inode of the deleted file.
+        * **Hint**: 
+            * If the file descriptor is for pipes or sockets, the result of `readlink()` will be 
+                `type:[inode]`.
+            * You should check the result to determine the `TYPE` is `FIFO` or `SOCK`.
+        * **Hint**: 
+            * In some cases, file descriptors may have no corresponding inode (fd produced by `bpf(2)`, etc.).
+            * The homework spec didn't cover these cases.
 
     * `maps`, `del`:
         * `/proc/{pid}/maps`
@@ -88,8 +113,9 @@ make
                 ```
             * The value in `perms` field would be `r`(read), `w`(write), `x`(execute), `s`(shared), `p`(private).
             * There are some pseudo-paths:
-                * `[stack]`, `[stack:<tid>]`, `[vsdo]`, `[heap]`
-        * `pathname` may be appended `(deleted)` indicate the file has been deleted. Need to change `FD` field from `mem` to `del`.
+                * `[stack]`, `[stack:<tid>]`, `[vdso]`, `[heap]`
+        * **Warn**: Need to check the permission to read `/proc/{pid}/maps`.
+        * **Hint**: `pathname` may be appended `(deleted)` indicate the file has been deleted. Need to change `FD` field from `mem` to `del`.
 
 ### Programing Relative
 * Parsing Arguments
