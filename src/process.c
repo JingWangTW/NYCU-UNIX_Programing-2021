@@ -15,6 +15,8 @@
 int get_cmd_username ( char * command, char * username, pid_t pid );
 int check_command_pass ( const char * command, PROC_FILTER * filter );
 int check_name_pass ( const char * name, const PROC_FILTER * filter );
+void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail );
+FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems );
 
 FILE_LIST * get_cwd ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
 FILE_LIST * get_root ( const pid_t pid, const PROC_FILTER * filter, const FILE_LIST template );
@@ -75,7 +77,7 @@ PID_LIST get_all_pids ( )
     return res;
 }
 
-FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
+PROC_FILES_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
 {
     int check_filter;
     int proc_cnt;
@@ -84,11 +86,20 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
     pid_t current_pid;
 
     FILE_LIST template;
-    // FILE_LIST * res    = NULL;
-    FILE_LIST * f_list = NULL;
+
+    FILE_LIST * res       = NULL;
+    FILE_LIST * proc_head = NULL;
+    FILE_LIST * proc_tail = NULL;
+
+    PROC_FILES_LIST * head = NULL;
+    PROC_FILES_LIST * tail = NULL;
 
     for ( proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
     {
+        /* reset list */
+        proc_head = NULL;
+        proc_tail = NULL;
+
         /* reset buf */
         memset ( command, 0, sizeof ( char ) * ( NAME_MAX + 1 ) );
         memset ( username, 0, sizeof ( char ) * ( LOGIN_NAME_MAX + 1 ) );
@@ -109,18 +120,43 @@ FILE_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         strcpy ( template.user_name, username );
         template.pid = current_pid;
 
-        f_list = get_mem ( current_pid, filter, template );
+        res = get_cwd ( current_pid, filter, template );
+        append_list ( res, &proc_head, &proc_tail );
 
-        while ( f_list != NULL )
+        res = get_root ( current_pid, filter, template );
+        append_list ( res, &proc_head, &proc_tail );
+
+        res = get_exe ( current_pid, filter, template );
+        append_list ( res, &proc_head, &proc_tail );
+
+        res = get_all_fd_files ( current_pid, filter, template );
+        append_list ( res, &proc_head, &proc_tail );
+
+        res = get_mem ( current_pid, filter, template );
+        res = remove_dup_files_in_mems ( proc_head, res );
+        append_list ( res, &proc_head, &proc_tail );
+
+        if ( proc_head != NULL )
         {
-            f_list->command[9] = '\0';
-            printf ( "%15s %7d %20s %8s %8d %8ld %s\n", f_list->command, f_list->pid, f_list->user_name, f_list->file_descriptior, f_list->type, f_list->inode_number, f_list->file_name );
+            if ( head == NULL )
+            {
+                head       = (PROC_FILES_LIST *) check_malloc ( sizeof ( PROC_FILES_LIST ) );
+                head->head = proc_head;
+                head->next = NULL;
 
-            f_list = f_list->next;
+                tail = head;
+            }
+            else
+            {
+                tail->next = (PROC_FILES_LIST *) check_malloc ( sizeof ( PROC_FILES_LIST ) );
+                tail       = tail->next;
+                tail->head = proc_head;
+                tail->next = NULL;
+            }
         }
     }
 
-    return f_list;
+    return head;
 }
 
 int get_cmd_username ( char * command, char * username, pid_t pid )
@@ -418,4 +454,61 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter )
     }
 
     return 1;
+}
+
+void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail )
+{
+    if ( *head == NULL )
+    {
+        *head = target;
+        *tail = target;
+    }
+    else if ( *tail == NULL )
+    {
+        *tail = *head;
+        while ( ( *tail )->next != NULL )
+            *tail = ( *tail )->next;
+
+        ( *tail )->next = target;
+        *tail           = target;
+    }
+    else
+    {
+        ( *tail )->next = target;
+        *tail           = target;
+    }
+}
+
+FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
+{
+    FILE_LIST * mems_head = mems;
+    FILE_LIST * mems_tail = mems;
+
+    const FILE_LIST * all_tail = all;
+
+    while ( all_tail != NULL && mems_head != NULL )
+    {
+        mems_tail = mems_head;
+
+        while ( mems_tail != NULL )
+        {
+            if ( mems_tail->inode_number == all_tail->inode_number && strcmp ( mems_tail->file_name, all_tail->file_name ) == 0 )
+            {
+                if ( mems_head == mems_tail )
+                {
+                    mems_head = mems_tail->next;
+                }
+
+                check_free ( mems_tail );
+
+                break;
+            }
+
+            mems_tail = mems_tail->next;
+        }
+
+        all_tail = all_tail->next;
+    }
+
+    return mems_head;
 }

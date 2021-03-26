@@ -29,8 +29,15 @@ struct file_list
     struct file_list * next;
 };
 
+struct proc_files_list
+{
+    struct file_list * head;
+    struct proc_files_list * next;
+};
+
 typedef enum file_type FILE_TYPE;
 typedef struct file_list FILE_LIST;
+typedef struct proc_files_list PROC_FILES_LIST;
 
 /* Read file stat from fd and pid number */
 FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LIST template );
