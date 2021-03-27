@@ -13,8 +13,8 @@ struct pid_vector
 
 struct process_filter
 {
-    regex_t * command_reg;
-    regex_t * filename_reg;
+    regex_t * command_regex;
+    regex_t * filename_regex;
     char * type_filter;
 };
 

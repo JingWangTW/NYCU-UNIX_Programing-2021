@@ -14,9 +14,9 @@ PROC_FILTER * check_input ( const char * command, const char * type, const char 
 PROC_FILTER * parse_input ( const int argc, char * const * argv )
 {
     int opt;
-    char * command_reg = NULL;
-    char * type        = NULL;
-    char * file_reg    = NULL;
+    char * command_regex_str  = NULL;
+    char * type               = NULL;
+    char * filename_regex_str = NULL;
 
     PROC_FILTER * res;
 
@@ -25,13 +25,13 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
         switch ( opt )
         {
             case 'c':
-                copy_from_optarg ( &command_reg );
+                copy_from_optarg ( &command_regex_str );
                 break;
             case 't':
                 copy_from_optarg ( &type );
                 break;
             case 'f':
-                copy_from_optarg ( &file_reg );
+                copy_from_optarg ( &filename_regex_str );
                 break;
             default:
                 fprintf ( stderr, "Unknown option: %c\n", opt );
@@ -39,11 +39,11 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
         }
     }
 
-    res = check_input ( command_reg, type, file_reg );
+    res = check_input ( command_regex_str, type, filename_regex_str );
 
-    check_free ( command_reg );
+    check_free ( command_regex_str );
     check_free ( type );
-    check_free ( file_reg );
+    check_free ( filename_regex_str );
 
     return res;
 }
@@ -149,8 +149,8 @@ PROC_FILTER * check_input ( const char * command, const char * type, const char 
         }
         else
         {
-            res->command_reg = (regex_t *) check_malloc ( sizeof ( regex_t ) );
-            regcomp ( res->command_reg, command, c_flags );
+            res->command_regex = (regex_t *) check_malloc ( sizeof ( regex_t ) );
+            regcomp ( res->command_regex, command, c_flags );
             regfree ( &temp );
         }
     }
@@ -165,8 +165,8 @@ PROC_FILTER * check_input ( const char * command, const char * type, const char 
         }
         else
         {
-            res->filename_reg = (regex_t *) check_malloc ( sizeof ( regex_t ) );
-            regcomp ( res->filename_reg, filename, c_flags );
+            res->filename_regex = (regex_t *) check_malloc ( sizeof ( regex_t ) );
+            regcomp ( res->filename_regex, filename, c_flags );
             regfree ( &temp );
         }
     }

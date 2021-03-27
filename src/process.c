@@ -373,9 +373,9 @@ int check_command_pass ( const char * command, PROC_FILTER * filter )
     if ( strlen ( command ) == 0 )
         return 0;
 
-    if ( filter->command_reg )
+    if ( filter->command_regex )
     {
-        match_res = regexec ( filter->command_reg, command, nmatch, &match, eflags );
+        match_res = regexec ( filter->command_regex, command, nmatch, &match, eflags );
 
         if ( match_res == 0 )
             return 1;
@@ -396,9 +396,9 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter )
     if ( strlen ( name ) == 0 )
         return 0;
 
-    if ( filter->filename_reg )
+    if ( filter->filename_regex )
     {
-        match_res = regexec ( filter->filename_reg, name, nmatch, &match, eflags );
+        match_res = regexec ( filter->filename_regex, name, nmatch, &match, eflags );
 
         if ( match_res == 0 )
             return 1;
@@ -545,7 +545,7 @@ FILE_LIST * filter_apply ( const PROC_FILTER * filter, FILE_LIST * all )
     FILE_LIST * tail = all;
     FILE_LIST * prev = NULL;
 
-    if ( filter->type_filter || filter->filename_reg )
+    if ( filter->type_filter || filter->filename_regex )
     {
         while ( head != NULL && ( check_type_pass ( head->type, filter ) == 0 || check_name_pass ( head->file_name, filter ) == 0 ) )
         {
