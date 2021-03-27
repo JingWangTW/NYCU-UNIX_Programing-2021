@@ -2,9 +2,14 @@
 #define __PROCESS_H__
 
 #include <regex.h>
-#include <unistd.h>
 
 #include "file.h"
+
+struct pid_list
+{
+    pid_t * list;
+    int size;
+};
 
 struct process_filter
 {
@@ -13,17 +18,13 @@ struct process_filter
     char * type_filter;
 };
 
-struct pid_list
-{
-    pid_t * list;
-    int size;
-};
-
-typedef struct process_filter PROC_FILTER;
 typedef struct pid_list PID_LIST;
+typedef struct process_filter PROC_FILTER;
 
 /* get all pid number under /proc */
 PID_LIST get_all_pids ( );
+
+/* Get all openned files by all procs */
 FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter );
 
 #endif

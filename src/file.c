@@ -1,13 +1,11 @@
 #include "file.h"
 
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 
-#include "process.h"
 #include "util.h"
 
 /* Get file stat and realpath from a provided file_path */
