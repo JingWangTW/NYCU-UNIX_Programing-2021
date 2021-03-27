@@ -27,18 +27,18 @@ FILE_LIST * get_root ( const pid_t pid, const FILE_LIST template );
 FILE_LIST * get_exe ( const pid_t pid, const FILE_LIST template );
 FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template );
 
-PID_LIST get_all_pids ( )
+PID_VECTOR get_all_pids ( )
 {
     int pid_count = 0;
     char test_name_buf[NAME_MAX + 1];
 
     pid_t temp_pid;
-    PID_LIST res;
+    PID_VECTOR res;
     DIR * proc_dir;
     struct dirent * proc_dir_entry;
 
     res.size = 100;
-    res.list = (pid_t *) check_malloc ( sizeof ( pid_t ) * res.size );
+    res.pids = (pid_t *) check_malloc ( sizeof ( pid_t ) * res.size );
     proc_dir = opendir ( "/proc" );
 
     // read all entry in the directory
@@ -61,10 +61,10 @@ PID_LIST get_all_pids ( )
                     if ( pid_count == res.size )
                     {
                         res.size += 100;
-                        res.list = check_realloc ( res.list, sizeof ( pid_t ) * res.size );
+                        res.pids = check_realloc ( res.pids, sizeof ( pid_t ) * res.size );
                     }
 
-                    res.list[pid_count] = temp_pid;
+                    res.pids[pid_count] = temp_pid;
 
                     pid_count++;
                 }
@@ -74,13 +74,13 @@ PID_LIST get_all_pids ( )
 
     closedir ( proc_dir );
 
-    res.list = check_realloc ( res.list, sizeof ( pid_t ) * pid_count );
+    res.pids = check_realloc ( res.pids, sizeof ( pid_t ) * pid_count );
     res.size = pid_count;
 
     return res;
 }
 
-FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
+FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
 {
     int check_filter;
     int proc_cnt;
@@ -98,10 +98,10 @@ FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
 
     FILE_LIST ** all_proc_file_list = NULL;
 
-    all_proc_file_list = (FILE_LIST **) check_malloc ( sizeof ( FILE_LIST * ) * pid_list.size );
-    memset ( all_proc_file_list, 0, sizeof ( FILE_LIST * ) * pid_list.size );
+    all_proc_file_list = (FILE_LIST **) check_malloc ( sizeof ( FILE_LIST * ) * all_pid.size );
+    memset ( all_proc_file_list, 0, sizeof ( FILE_LIST * ) * all_pid.size );
 
-    for ( proc_cnt = 0, non_empty_proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
+    for ( proc_cnt = 0, non_empty_proc_cnt = 0; proc_cnt < all_pid.size; proc_cnt++ )
     {
         /* reset list */
         proc_head = NULL;
@@ -112,7 +112,7 @@ FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         memset ( username, 0, sizeof ( char ) * ( LOGIN_NAME_MAX + 1 ) );
 
         /* The current progress pid */
-        current_pid = pid_list.list[proc_cnt];
+        current_pid = all_pid.pids[proc_cnt];
 
         /* get command by pid */
         get_cmd_username ( command, username, current_pid );

@@ -5,9 +5,9 @@
 
 #include "file.h"
 
-struct pid_list
+struct pid_vector
 {
-    pid_t * list;
+    pid_t * pids;
     int size;
 };
 
@@ -18,13 +18,13 @@ struct process_filter
     char * type_filter;
 };
 
-typedef struct pid_list PID_LIST;
+typedef struct pid_vector PID_VECTOR;
 typedef struct process_filter PROC_FILTER;
 
 /* get all pid number under /proc */
-PID_LIST get_all_pids ( );
+PID_VECTOR get_all_pids ( );
 
 /* Get all openned files by all procs */
-FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter );
+FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter );
 
 #endif

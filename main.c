@@ -9,7 +9,7 @@
 int main ( const int argc, char * const * argv )
 {
     PROC_FILTER * filter = parse_input ( argc, argv );
-    PID_LIST all_pids;
+    PID_VECTOR all_pids;
     FILE_LIST ** all_porc_files;
 
     if ( filter == NULL )
