@@ -10,8 +10,7 @@ int main ( const int argc, char * const * argv )
 {
     PROC_FILTER * filter = parse_input ( argc, argv );
     PID_LIST all_pids;
-    PROC_FILES_LIST * all_porc_files;
-    FILE_LIST * file;
+    FILE_LIST ** all_porc_files;
 
     if ( filter == NULL )
         exit ( EXIT_FAILURE );
@@ -20,24 +19,7 @@ int main ( const int argc, char * const * argv )
 
     all_porc_files = get_all_proc_files ( all_pids, filter );
 
-    while ( all_porc_files != NULL )
-    {
-        file = all_porc_files->head;
-
-        if ( file )
-            print_result ( file );
-
-        // while ( file != NULL )
-        // {
-        //     file->command[9] = '\0';
-
-        //     printf ( "%10s %7d %20s %8s %8d %8ld %s\n", file->command, file->pid, file->user_name, file->file_descriptior, file->type, file->inode_number, file->file_name );
-
-        //     file = file->next;
-        // }
-
-        all_porc_files = all_porc_files->next;
-    }
+    print_result ( all_porc_files, all_pids.size );
 
     return 0;
 }

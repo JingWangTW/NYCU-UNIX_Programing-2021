@@ -6,6 +6,7 @@
 #include <linux/limits.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -19,6 +20,7 @@ int check_type_pass ( FILE_TYPE type, const PROC_FILTER * filter );
 void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail );
 FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems );
 FILE_LIST * filter_apply ( const PROC_FILTER * filter, FILE_LIST * all );
+int proc_compare ( const void * a, const void * b );
 
 FILE_LIST * get_cwd ( const pid_t pid, const FILE_LIST template );
 FILE_LIST * get_root ( const pid_t pid, const FILE_LIST template );
@@ -78,10 +80,11 @@ PID_LIST get_all_pids ( )
     return res;
 }
 
-PROC_FILES_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
+FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
 {
     int check_filter;
     int proc_cnt;
+    int non_empty_proc_cnt;
     char command[NAME_MAX + 1];
     char username[LOGIN_NAME_MAX + 1];
     pid_t current_pid;
@@ -89,13 +92,16 @@ PROC_FILES_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
     FILE_LIST template;
 
     FILE_LIST * res       = NULL;
+    FILE_LIST * map_res   = NULL;
     FILE_LIST * proc_head = NULL;
     FILE_LIST * proc_tail = NULL;
 
-    PROC_FILES_LIST * head = NULL;
-    PROC_FILES_LIST * tail = NULL;
+    FILE_LIST ** all_proc_file_list = NULL;
 
-    for ( proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
+    all_proc_file_list = (FILE_LIST **) check_malloc ( sizeof ( FILE_LIST * ) * pid_list.size );
+    memset ( all_proc_file_list, 0, sizeof ( FILE_LIST * ) * pid_list.size );
+
+    for ( proc_cnt = 0, non_empty_proc_cnt = 0; proc_cnt < pid_list.size; proc_cnt++ )
     {
         /* reset list */
         proc_head = NULL;
@@ -130,36 +136,34 @@ PROC_FILES_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter )
         res = get_exe ( current_pid, template );
         append_list ( res, &proc_head, &proc_tail );
 
+        /* get file in fd directory */
         res = get_all_fd_files ( current_pid, template );
-        append_list ( res, &proc_head, &proc_tail );
 
-        res = read_maps_file ( current_pid, template );
-        res = remove_dup_files_in_mems ( proc_head, res );
+        /* get file in mems file */
+        map_res = read_maps_file ( current_pid, template );
+
+        /* remove duplicated find in all other source*/
+        map_res = remove_dup_files_in_mems ( proc_head, map_res );
+        map_res = remove_dup_files_in_mems ( res, map_res );
+
+        /* append mems first */
+        append_list ( map_res, &proc_head, &proc_tail );
+
+        /* then the /fd */
         append_list ( res, &proc_head, &proc_tail );
 
         proc_head = filter_apply ( filter, proc_head );
 
-        if ( proc_head != NULL )
+        if ( proc_head )
         {
-            if ( head == NULL )
-            {
-                head       = (PROC_FILES_LIST *) check_malloc ( sizeof ( PROC_FILES_LIST ) );
-                head->head = proc_head;
-                head->next = NULL;
-
-                tail = head;
-            }
-            else
-            {
-                tail->next = (PROC_FILES_LIST *) check_malloc ( sizeof ( PROC_FILES_LIST ) );
-                tail       = tail->next;
-                tail->head = proc_head;
-                tail->next = NULL;
-            }
+            all_proc_file_list[non_empty_proc_cnt] = proc_head;
+            non_empty_proc_cnt++;
         }
     }
 
-    return head;
+    qsort ( all_proc_file_list, non_empty_proc_cnt, sizeof ( FILE_LIST * ), proc_compare );
+
+    return all_proc_file_list;
 }
 
 int get_cmd_username ( char * command, char * username, pid_t pid )
@@ -575,4 +579,12 @@ FILE_LIST * filter_apply ( const PROC_FILTER * filter, FILE_LIST * all )
     }
 
     return head;
+}
+
+int proc_compare ( const void * a, const void * b )
+{
+    FILE_LIST * _a = *( (FILE_LIST **) a );
+    FILE_LIST * _b = *( (FILE_LIST **) b );
+
+    return _a->pid - _b->pid;
 }

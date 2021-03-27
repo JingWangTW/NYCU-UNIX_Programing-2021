@@ -48,8 +48,10 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
     return res;
 }
 
-void print_result ( FILE_LIST * file_list )
+void print_result ( FILE_LIST ** file_list, int size )
 {
+    int is_first_line = 1;
+    int proc_cnt;
     char forma_string[100];
     char filed_buffer[1000];
     char type_buffer[16];
@@ -60,7 +62,7 @@ void print_result ( FILE_LIST * file_list )
     size_t max_pid     = 3;
     size_t max_user    = 4;
     size_t max_fd      = 2;
-    const int max_type = 7;  // unknown
+    const int max_type = 7;  // length of "unknown"
     size_t max_node    = 4;
 
     FILE_LIST * head;
@@ -68,38 +70,54 @@ void print_result ( FILE_LIST * file_list )
     if ( file_list == NULL )
         return;
 
-    head = file_list;
-    while ( head != NULL )
+    for ( proc_cnt = 0; proc_cnt < size; proc_cnt++ )
     {
-        max_command = MIN ( MAX ( max_command, strlen ( head->file_name ) ), (size_t) 9 );
+        head = file_list[proc_cnt];
 
-        sprintf ( filed_buffer, "%d", head->pid );
-        max_pid = MAX ( max_pid, strlen ( filed_buffer ) );
+        while ( head != NULL )
+        {
+            max_command = MIN ( MAX ( max_command, strlen ( head->file_name ) ), (size_t) 9 );
 
-        max_user = MAX ( max_user, strlen ( head->user_name ) );
+            sprintf ( filed_buffer, "%d", head->pid );
+            max_pid = MAX ( max_pid, strlen ( filed_buffer ) );
 
-        max_fd = MAX ( max_fd, strlen ( head->file_descriptior ) );
+            max_user = MAX ( max_user, strlen ( head->user_name ) );
 
-        sprintf ( filed_buffer, "%ld", head->inode_number );
-        max_node = MAX ( max_node, strlen ( filed_buffer ) );
+            max_fd = MAX ( max_fd, strlen ( head->file_descriptior ) );
 
-        head = head->next;
+            sprintf ( filed_buffer, "%ld", head->inode_number );
+            max_node = MAX ( max_node, strlen ( filed_buffer ) );
+
+            head = head->next;
+        }
     }
-
-    printf ( "%-*s %-*s %-*s %-*s %-*s %-*s %s\n", (int) max_command, "COMMAND", (int) max_pid, "PID", (int) max_user, "USER", (int) max_fd, "FD", max_type, "TYPE", (int) max_node, "NODE", "NAME" );
 
     sprintf ( forma_string, "%%-%lds %%-%ldd %%-%lds %%-%lds %%-%ds %%-%lds %%s\n", max_command, max_pid, max_user, max_fd, max_type, max_node );
 
-    head = file_list;
-    while ( head != NULL )
+    is_first_line = 1;
+    for ( proc_cnt = 0; proc_cnt < size; proc_cnt++ )
     {
-        get_type_str ( head, type_buffer );
-        get_node_str ( head, node_buffer );
+        head = file_list[proc_cnt];
 
-        head->command[9] = '\0';
+        while ( head != NULL )
+        {
+            get_type_str ( head, type_buffer );
+            get_node_str ( head, node_buffer );
 
-        printf ( forma_string, head->command, head->pid, head->user_name, head->file_descriptior, type_buffer, node_buffer, head->file_name );
-        head = head->next;
+            head->command[9] = '\0';
+
+            // Print first titile
+            if ( is_first_line )
+            {
+                printf ( "%-*s %-*s %-*s %-*s %-*s %-*s %s\n", (int) max_command, "COMMAND", (int) max_pid, "PID", (int) max_user, "USER", (int) max_fd, "FD", max_type, "TYPE", (int) max_node, "NODE",
+                         "NAME" );
+
+                is_first_line = 0;
+            }
+
+            printf ( forma_string, head->command, head->pid, head->user_name, head->file_descriptior, type_buffer, node_buffer, head->file_name );
+            head = head->next;
+        }
     }
 }
 

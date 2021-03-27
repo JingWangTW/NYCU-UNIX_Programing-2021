@@ -24,6 +24,6 @@ typedef struct pid_list PID_LIST;
 
 /* get all pid number under /proc */
 PID_LIST get_all_pids ( );
-PROC_FILES_LIST * get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter );
+FILE_LIST ** get_all_proc_files ( PID_LIST pid_list, PROC_FILTER * filter );
 
 #endif
