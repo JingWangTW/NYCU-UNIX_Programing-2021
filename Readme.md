@@ -141,6 +141,7 @@ make
     * `regexec()`: Used to test if the input string is matched with the regex.
     * `regerror()`: Get human read string from the error code output from `regcomp()` or `regexec()`.
     * `regfree()`: Release regex obj got from `regcomp()`.
+    * `REG_NOTBOL`: Need to use this flag to make `$` and `^` work in reqular expression.
 * Uid to username
     * [`getpwuid()`](https://linux.die.net/man/3/getpwuid)
     * Get a pointer to a structure containing the broken-out fields of the record in the password database that matches the user ID `uid`.
@@ -149,6 +150,15 @@ make
     * A flag pass to [`open(2)`](https://man7.org/linux/man-pages/man2/open.2.html) or a flag get from `/proc/[pid]/fdinfo/{fd_no}`
     * `O_ACCMODE`: Since the flag mentioned above contain both access mode and status flags. You can use this mask to leave access mode only.
     * `O_RDONLY`,`O_RDWR`, `O_WRONLY`: Test with these macros, then you can get the access mode of the flag.
+* GCC Diagnostic Pragmas
+    * [Diagnostic Pragmas](https://gcc.gnu.org/onlinedocs/gcc/Diagnostic-Pragmas.html)
+    * Use follow block to ignore some warning when debugging
+        ```c
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wuninitialized"
+        // C Program
+        #pragma GCC diagnostic pop
+        ```
 * Limits on File System Capacity
     * [limits.h(0p)](https://man7.org/linux/man-pages/man0/limits.h.0p.html)
     * `NAME_MAX`: The limit a file name component, **not including** the terminating null character.
