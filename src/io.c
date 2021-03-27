@@ -133,7 +133,7 @@ void copy_from_optarg ( char ** dest )
 
 PROC_FILTER * check_input ( const char * command, const char * type, const char * filename )
 {
-    const int c_flags = 0;
+    const int c_flags = REG_NOTBOL;
 
     regex_t temp;
     PROC_FILTER * res = (PROC_FILTER *) check_malloc ( sizeof ( PROC_FILTER ) );
