@@ -7,12 +7,12 @@
 
 enum file_type
 {
-    DIRECTOR,
-    REGULAR,
-    CHARACTER,
-    FIFO_FILE,
-    SOCKET_FILE,
-    UNKNOWN_FILE,
+    TYPE_DIR,
+    TYPE_REG,
+    TYPE_CHR,
+    TYPE_FIFO,
+    TYPE_SOCK,
+    TYPE_UNKNOWN,
 };
 
 struct file_list

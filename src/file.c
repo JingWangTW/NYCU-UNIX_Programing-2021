@@ -165,22 +165,22 @@ void get_type_str ( const FILE_LIST * file, char * buf )
 {
     switch ( file->type )
     {
-        case DIRECTOR:
+        case TYPE_DIR:
             sprintf ( buf, "DIR" );
             break;
-        case CHARACTER:
+        case TYPE_CHR:
             sprintf ( buf, "CHR" );
             break;
-        case REGULAR:
+        case TYPE_REG:
             sprintf ( buf, "REG" );
             break;
-        case FIFO_FILE:
+        case TYPE_FIFO:
             sprintf ( buf, "FIFO" );
             break;
-        case SOCKET_FILE:
+        case TYPE_SOCK:
             sprintf ( buf, "SOCK" );
             break;
-        case UNKNOWN_FILE:
+        case TYPE_UNKNOWN:
             sprintf ( buf, "unknown" );
             break;
         default:
@@ -191,7 +191,7 @@ void get_type_str ( const FILE_LIST * file, char * buf )
 
 void get_node_str ( const FILE_LIST * file, char * buf )
 {
-    if ( file->type == UNKNOWN_FILE || file->type == (FILE_TYPE) -1 )
+    if ( file->type == TYPE_UNKNOWN || file->type == (FILE_TYPE) -1 )
         buf[0] = '\0';
     else
         sprintf ( buf, "%ld", file->inode_number );
@@ -381,36 +381,36 @@ FILE_TYPE get_file_type ( const struct stat * file_status, const char * file_pat
 {
     if ( strstr ( file_path, "pipe" ) != NULL )
     {
-        return FIFO_FILE;
+        return TYPE_FIFO;
     }
     else if ( strstr ( file_path, "socket" ) != NULL )
     {
-        return SOCKET_FILE;
+        return TYPE_SOCK;
     }
     else
     {
         if ( file_status == NULL )
-            return UNKNOWN_FILE;
+            return TYPE_UNKNOWN;
 
         switch ( file_status->st_mode & S_IFMT )
         {
             case S_IFDIR:
-                return DIRECTOR;
+                return TYPE_DIR;
 
             case S_IFREG:
-                return REGULAR;
+                return TYPE_REG;
 
             case S_IFCHR:
-                return CHARACTER;
+                return TYPE_CHR;
 
             case S_IFIFO:
-                return FIFO_FILE;
+                return TYPE_FIFO;
 
             case S_IFSOCK:
-                return SOCKET_FILE;
+                return TYPE_SOCK;
 
             default:
-                return UNKNOWN_FILE;
+                return TYPE_UNKNOWN;
         }
     }
 }

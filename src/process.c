@@ -415,32 +415,32 @@ int check_type_pass ( FILE_TYPE type, const PROC_FILTER * filter )
     {
         if ( strcmp ( filter->type_filter, "REG" ) == 0 )
         {
-            if ( type == REGULAR )
+            if ( type == TYPE_REG )
                 return 1;
         }
         else if ( strcmp ( filter->type_filter, "CHR" ) == 0 )
         {
-            if ( type == CHARACTER )
+            if ( type == TYPE_CHR )
                 return 1;
         }
         else if ( strcmp ( filter->type_filter, "DIR" ) == 0 )
         {
-            if ( type == DIRECTOR )
+            if ( type == TYPE_DIR )
                 return 1;
         }
         else if ( strcmp ( filter->type_filter, "FIFO" ) == 0 )
         {
-            if ( type == FIFO_FILE )
+            if ( type == TYPE_FIFO )
                 return 1;
         }
         else if ( strcmp ( filter->type_filter, "SOCK" ) == 0 )
         {
-            if ( type == SOCKET_FILE )
+            if ( type == TYPE_SOCK )
                 return 1;
         }
         else if ( strcmp ( filter->type_filter, "unknown" ) == 0 )
         {
-            if ( type == UNKNOWN_FILE )
+            if ( type == TYPE_UNKNOWN )
                 return 1;
         }
 
