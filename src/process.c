@@ -323,7 +323,7 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
         strncpy_append ( res->user_name, template.user_name, USER_NAME_MAX - 1 );
         strncpy_append ( res->file_descriptior, "NOFD", FILE_DESCRIPTOR_MAX - 1 );
         strncpy_append ( res->file_name, fd_dir_path, FILE_PATH_MAX - 1 );
-        get_error_message ( errno, "opendir", res->file_name + strlen ( res->file_name ) );
+        get_error_message ( errno, "opendir", res->file_name + strlen ( res->file_name ), ERROR_STR_LEN_MAX - 1 );
 
         res->type         = -1;
         res->inode_number = -1;

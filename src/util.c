@@ -1,3 +1,5 @@
+#include "util.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,10 +36,18 @@ void * check_realloc ( void * ptr, const size_t size )
     return ptr_new;
 }
 
-const char * get_error_message ( int err_no, const char * func_name, char * buffer )
+const char * get_error_message ( int err_no, const char * func_name, char * buffer, size_t buflen )
 {
-    sprintf ( buffer, "(%s: %s)", func_name, strerror ( err_no ) );
+    char * temp;
 
+    strerror_r ( err_no, buffer, buflen - strlen ( func_name ) - 4 );
+
+    temp = (char *) check_malloc ( sizeof ( char ) * strnlen ( buffer, buflen ) );
+    strncpy_append ( temp, buffer, strnlen ( buffer, buflen ) );
+
+    sprintf ( buffer, "(%s: %s)", func_name, temp );
+
+    check_free ( temp );
     return buffer;
 }
 

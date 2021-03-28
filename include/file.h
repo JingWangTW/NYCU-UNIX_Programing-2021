@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define ERROR_STR_LEN_MAX ( 64 )
+
 #define FILE_TYPE_STR_LEN_MAX ( 16 )
 #define INODE_STR_LEN_MAX     ( 32 )
 #define PID_STR_LEN_MAX       ( 32 )
@@ -12,7 +14,7 @@
 #define COMMAND_NAME_MAX    ( NAME_MAX + 1 )
 #define USER_NAME_MAX       ( LOGIN_NAME_MAX )
 #define FILE_DESCRIPTOR_MAX ( 16 )
-#define FILE_PATH_MAX       ( PATH_MAX + 64 )  // include error message
+#define FILE_PATH_MAX       ( PATH_MAX + ERROR_STR_LEN_MAX )
 #define FILE_NAME_MAX       ( NAME_MAX + 1 )
 
 enum file_type

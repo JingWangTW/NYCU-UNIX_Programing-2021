@@ -201,7 +201,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
 {
     int fd_num;
 
-    char error_str[64];
+    char error_str[ERROR_STR_LEN_MAX];
 
     char special_type[64];
     ino_t special_inode;
@@ -221,7 +221,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
         // the file is exist, but wrong with its link
         if ( readlink ( file_path, realpath, FILE_PATH_MAX ) == -1 )
         {
-            get_error_message ( errno, "readlink", error_str );
+            get_error_message ( errno, "readlink", error_str, ERROR_STR_LEN_MAX - 1 );
             snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
             return -1;
@@ -240,7 +240,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 // I just leave it as a failed request
                 if ( fd_num == -1 )
                 {
-                    get_error_message ( errno, "open", error_str );
+                    get_error_message ( errno, "open", error_str, ERROR_STR_LEN_MAX - 1 );
                     snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
                     return -1;
@@ -249,7 +249,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 // Just leave this error check, more works is better than segment fault happened
                 else if ( fstat ( fd_num, file_stat ) == -1 )
                 {
-                    get_error_message ( errno, "fstat", error_str );
+                    get_error_message ( errno, "fstat", error_str, ERROR_STR_LEN_MAX - 1 );
                     snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
                     return -1;
@@ -306,7 +306,7 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 
     if ( access ( fd_info_path, R_OK ) == -1 )
     {
-        get_error_message ( errno, "access", dest->file_name );
+        get_error_message ( errno, "access", dest->file_name, FILE_PATH_MAX - 1 );
         return;
     }
 

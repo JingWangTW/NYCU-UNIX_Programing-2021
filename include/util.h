@@ -29,7 +29,7 @@ void * check_malloc ( const size_t size );
 void * check_realloc ( void * ptr, const size_t size );
 
 /* Get human readable error string */
-const char * get_error_message ( int err_no, const char * func_name, char * buffer );
+const char * get_error_message ( int err_no, const char * func_name, char * buffer, size_t buflen );
 
 /* A wrap function to wrap standard strncp */
 /* Will append '\0' at the end of string */
