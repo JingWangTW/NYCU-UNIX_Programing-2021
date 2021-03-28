@@ -52,10 +52,10 @@ void print_result ( FILE_LIST ** file_list, int size )
 {
     int is_first_line = 1;
     int proc_cnt;
-    char forma_string[100];
-    char filed_buffer[1000];
-    char type_buffer[16];
-    char node_buffer[16];
+    char format_string[100];
+    char field_buffer[MAX ( PID_STR_LEN_MAX, INODE_STR_LEN_MAX )];
+    char type_buffer[FILE_TYPE_STR_LEN_MAX];
+    char node_buffer[INODE_STR_LEN_MAX];
 
     // the initial value is the length of col title
     size_t max_command = 7;
@@ -76,23 +76,23 @@ void print_result ( FILE_LIST ** file_list, int size )
 
         while ( head != NULL )
         {
-            max_command = MIN ( MAX ( max_command, strlen ( head->file_name ) ), (size_t) 9 );
+            max_command = MIN ( MAX ( max_command, strnlen ( head->file_name, FILE_PATH_MAX - 1 ) ), (size_t) 9 );
 
-            sprintf ( filed_buffer, "%d", head->pid );
-            max_pid = MAX ( max_pid, strlen ( filed_buffer ) );
+            sprintf ( field_buffer, "%d", head->pid );
+            max_pid = MAX ( max_pid, strnlen ( field_buffer, PID_STR_LEN_MAX - 1 ) );
 
-            max_user = MAX ( max_user, strlen ( head->user_name ) );
+            max_user = MAX ( max_user, strnlen ( head->user_name, USER_NAME_MAX - 1 ) );
 
-            max_fd = MAX ( max_fd, strlen ( head->file_descriptior ) );
+            max_fd = MAX ( max_fd, strnlen ( head->file_descriptior, FILE_DESCRIPTOR_MAX - 1 ) );
 
-            sprintf ( filed_buffer, "%ld", head->inode_number );
-            max_node = MAX ( max_node, strlen ( filed_buffer ) );
+            sprintf ( field_buffer, "%ld", head->inode_number );
+            max_node = MAX ( max_node, strnlen ( field_buffer, INODE_STR_LEN_MAX - 1 ) );
 
             head = head->next;
         }
     }
 
-    sprintf ( forma_string, "%%-%lds %%-%ldd %%-%lds %%-%lds %%-%ds %%-%lds %%s\n", max_command, max_pid, max_user, max_fd, max_type, max_node );
+    sprintf ( format_string, "%%-%lds %%-%ldd %%-%lds %%-%lds %%-%ds %%-%lds %%s\n", max_command, max_pid, max_user, max_fd, max_type, max_node );
 
     is_first_line = 1;
     for ( proc_cnt = 0; proc_cnt < size; proc_cnt++ )
@@ -115,7 +115,7 @@ void print_result ( FILE_LIST ** file_list, int size )
                 is_first_line = 0;
             }
 
-            printf ( forma_string, head->command, head->pid, head->user_name, head->file_descriptior, type_buffer, node_buffer, head->file_name );
+            printf ( format_string, head->command, head->pid, head->user_name, head->file_descriptior, type_buffer, node_buffer, head->file_name );
             head = head->next;
         }
     }
@@ -128,7 +128,7 @@ void copy_from_optarg ( char ** dest )
 
     *dest = check_malloc ( sizeof ( char ) * ( strlen ( optarg ) + 1 ) );
 
-    strcpy ( *dest, optarg );
+    strncpy_append ( *dest, optarg, strlen ( optarg ) );
 }
 
 PROC_FILTER * check_input ( const char * command, const char * type, const char * filename )
@@ -176,8 +176,8 @@ PROC_FILTER * check_input ( const char * command, const char * type, const char 
         if ( strcmp ( type, "REG" ) == 0 || strcmp ( type, "CHR" ) == 0 || strcmp ( type, "DIR" ) == 0 || strcmp ( type, "FIFO" ) == 0 || strcmp ( type, "SOCK" ) == 0 ||
              strcmp ( type, "unknown" ) == 0 )
         {
-            res->type_filter = (char *) check_malloc ( sizeof ( char ) * ( strlen ( type ) + 1 ) );
-            strcpy ( res->type_filter, type );
+            res->type_filter = (char *) check_malloc ( sizeof ( char ) * ( strnlen ( type, FILE_TYPE_STR_LEN_MAX ) + 1 ) );
+            strncpy_append ( res->type_filter, type, FILE_TYPE_STR_LEN_MAX );
         }
         else
         {

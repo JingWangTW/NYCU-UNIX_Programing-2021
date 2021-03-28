@@ -5,6 +5,16 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define FILE_TYPE_STR_LEN_MAX ( 16 )
+#define INODE_STR_LEN_MAX     ( 32 )
+#define PID_STR_LEN_MAX       ( 32 )
+
+#define COMMAND_NAME_MAX    ( NAME_MAX + 1 )
+#define USER_NAME_MAX       ( LOGIN_NAME_MAX )
+#define FILE_DESCRIPTOR_MAX ( 16 )
+#define FILE_PATH_MAX       ( PATH_MAX + 64 )  // include error message
+#define FILE_NAME_MAX       ( NAME_MAX + 1 )
+
 enum file_type
 {
     TYPE_DIR,
@@ -17,14 +27,14 @@ enum file_type
 
 struct file_list
 {
-    char command[NAME_MAX + 1];
+    char command[COMMAND_NAME_MAX];
     pid_t pid;
-    char user_name[LOGIN_NAME_MAX + 1];
+    char user_name[USER_NAME_MAX];
 
-    char file_descriptior[64];
+    char file_descriptior[FILE_DESCRIPTOR_MAX];
     enum file_type type;
     ino_t inode_number;
-    char file_name[PATH_MAX + 32];  // may concat with permission denied string
+    char file_name[FILE_PATH_MAX];  // may concat with permission denied string
 
     struct file_list * next;
 };

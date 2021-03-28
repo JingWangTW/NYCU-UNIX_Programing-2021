@@ -32,20 +32,20 @@ int check_filename_append_deleted ( const char * file_path );
 FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LIST template )
 {
     int get_stat_res;
-    char realpath[PATH_MAX + 1]     = { '\0' };
-    char fd_file_name[PATH_MAX + 1] = { '\0' };
+    char realpath[FILE_PATH_MAX]     = { '\0' };
+    char fd_file_name[FILE_PATH_MAX] = { '\0' };
 
     struct stat file_stat;
     FILE_LIST * res;
 
-    sprintf ( fd_file_name, "/proc/%d/fd/%d", pid, fd_num );
+    snprintf ( fd_file_name, FILE_PATH_MAX - 1, "/proc/%d/fd/%d", pid, fd_num );
 
     get_stat_res = get_file_stat ( realpath, &file_stat, fd_file_name );
 
     res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     set_common_file_stat ( res, template );
-    strcpy ( res->file_name, realpath );
+    strncpy_append ( res->file_name, realpath, FILE_PATH_MAX - 1 );
 
     res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
     res->inode_number = file_stat.st_ino;
@@ -58,7 +58,7 @@ FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LI
 FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST template )
 {
     int get_stat_res;
-    char realpath[PATH_MAX + 1] = { '\0' };
+    char realpath[FILE_PATH_MAX] = { '\0' };
 
     struct stat file_stat;
 
@@ -69,7 +69,7 @@ FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST templa
     res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     set_common_file_stat ( res, template );
-    strcpy ( res->file_name, realpath );
+    strncpy_append ( res->file_name, realpath, FILE_PATH_MAX - 1 );
 
     res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
     res->inode_number = file_stat.st_ino;
@@ -83,9 +83,9 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
     int parse_result;
 
     char input_str[1000];
-    char input_path[PATH_MAX + 1];
-    char real_path[PATH_MAX + 1];
-    char maps_file_path[PATH_MAX + 1];
+    char input_path[FILE_PATH_MAX];
+    char real_path[FILE_PATH_MAX];
+    char maps_file_path[FILE_PATH_MAX];
 
     ino_t inode_num;
 
@@ -97,7 +97,7 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
 
     struct stat file_status;
 
-    sprintf ( maps_file_path, "/proc/%d/maps", pid );
+    snprintf ( maps_file_path, FILE_PATH_MAX - 1, "/proc/%d/maps", pid );
 
     maps_file = fopen ( maps_file_path, "r" );
 
@@ -119,7 +119,7 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
             continue;
 
         // skip pseudo-path
-        if ( strlen ( input_path ) == 0 || input_path[0] == '[' )
+        if ( strnlen ( input_path, FILE_PATH_MAX - 1 ) == 0 || input_path[0] == '[' )
             continue;
 
         // get file stat and its real path
@@ -139,11 +139,11 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
 
         // check whether is a delete file
         if ( check_filename_append_deleted ( real_path ) )
-            strcpy ( res->file_descriptior, "del" );
+            strncpy_append ( res->file_descriptior, "del", FILE_DESCRIPTOR_MAX - 1 );
         else
-            strcpy ( res->file_descriptior, "mem" );
+            strncpy_append ( res->file_descriptior, "mem", FILE_DESCRIPTOR_MAX - 1 );
 
-        strcpy ( res->file_name, real_path );
+        strncpy_append ( res->file_name, real_path, FILE_PATH_MAX - 1 );
         res->type = get_file_type ( get_stat_res == -1 ? NULL : &file_status, input_path );
 
         // append the record to the list
@@ -166,22 +166,22 @@ void get_type_str ( const FILE_LIST * file, char * buf )
     switch ( file->type )
     {
         case TYPE_DIR:
-            sprintf ( buf, "DIR" );
+            strncpy_append ( buf, "DIR", FILE_TYPE_STR_LEN_MAX - 1 );
             break;
         case TYPE_CHR:
-            sprintf ( buf, "CHR" );
+            strncpy_append ( buf, "CHR", FILE_TYPE_STR_LEN_MAX - 1 );
             break;
         case TYPE_REG:
-            sprintf ( buf, "REG" );
+            strncpy_append ( buf, "REG", FILE_TYPE_STR_LEN_MAX - 1 );
             break;
         case TYPE_FIFO:
-            sprintf ( buf, "FIFO" );
+            strncpy_append ( buf, "FIFO", FILE_TYPE_STR_LEN_MAX - 1 );
             break;
         case TYPE_SOCK:
-            sprintf ( buf, "SOCK" );
+            strncpy_append ( buf, "SOCK", FILE_TYPE_STR_LEN_MAX - 1 );
             break;
         case TYPE_UNKNOWN:
-            sprintf ( buf, "unknown" );
+            strncpy_append ( buf, "unknown", FILE_TYPE_STR_LEN_MAX - 1 );
             break;
         default:
             buf[0] = '\0';
@@ -194,7 +194,7 @@ void get_node_str ( const FILE_LIST * file, char * buf )
     if ( file->type == TYPE_UNKNOWN || file->type == (FILE_TYPE) -1 )
         buf[0] = '\0';
     else
-        sprintf ( buf, "%ld", file->inode_number );
+        snprintf ( buf, INODE_STR_LEN_MAX - 1, "%ld", file->inode_number );
 }
 
 int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path )
@@ -210,7 +210,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     // just skip it
     if ( lstat ( file_path, file_stat ) == -1 )
     {
-        strcpy ( realpath, file_path );
+        strncpy_append ( realpath, file_path, FILE_PATH_MAX - 1 );
         return -1;
     }
 
@@ -219,10 +219,10 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     {
         // try to read the symbolic link
         // the file is exist, but wrong with its link
-        if ( readlink ( file_path, realpath, PATH_MAX ) == -1 )
+        if ( readlink ( file_path, realpath, FILE_PATH_MAX ) == -1 )
         {
             get_error_message ( errno, "readlink", error_str );
-            sprintf ( realpath, "%s %s", file_path, error_str );
+            snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
             return -1;
         }
@@ -241,7 +241,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 if ( fd_num == -1 )
                 {
                     get_error_message ( errno, "open", error_str );
-                    sprintf ( realpath, "%s %s", file_path, error_str );
+                    snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
                     return -1;
                 }
@@ -250,7 +250,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 else if ( fstat ( fd_num, file_stat ) == -1 )
                 {
                     get_error_message ( errno, "fstat", error_str );
-                    sprintf ( realpath, "%s %s", file_path, error_str );
+                    snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
                     return -1;
                 }
@@ -271,13 +271,13 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 // something lke: [pipe:inode] [socket:inode]
                 if ( sscanf ( realpath, "%[a-z]:[%ld]", special_type, &special_inode ) == 2 )
                 {
-                    strcpy ( realpath, special_type );
+                    strncpy_append ( realpath, special_type, FILE_PATH_MAX - 1 );
                     file_stat->st_ino = special_inode;
                 }
                 // something like: "anon_inode:<file-type>"
                 else if ( sscanf ( realpath, "anon_inode:%s", special_type ) == 1 )
                 {
-                    strcpy ( realpath, special_type );
+                    strncpy_append ( realpath, special_type, FILE_PATH_MAX - 1 );
                 }
 
                 return -1;
@@ -287,7 +287,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     else
     {
         // It's a normal file, the real path is just the same as file_path
-        strcpy ( realpath, file_path );
+        strncpy_append ( realpath, file_path, FILE_PATH_MAX - 1 );
     }
 
     return 0;
@@ -298,11 +298,11 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
     int flag;
     char input_str[100];
     char * search_ptr;
-    char fd_info_path[PATH_MAX];
+    char fd_info_path[FILE_PATH_MAX];
 
     FILE * fd_info;
 
-    sprintf ( fd_info_path, "/proc/%d/fdinfo/%d", pid, fd_num );
+    snprintf ( fd_info_path, FILE_PATH_MAX - 1, "/proc/%d/fdinfo/%d", pid, fd_num );
 
     if ( access ( fd_info_path, R_OK ) == -1 )
     {
@@ -326,18 +326,18 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 
     if ( flag == -1 )
     {
-        sprintf ( dest->file_descriptior, "ERR" );
+        snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "ERR" );
     }
     else
     {
         if ( ( flag & O_ACCMODE ) == O_RDONLY )
-            sprintf ( dest->file_descriptior, "%dr", fd_num );
+            snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "%dr", fd_num );
         else if ( ( flag & O_ACCMODE ) == O_WRONLY )
-            sprintf ( dest->file_descriptior, "%dw", fd_num );
+            snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "%dw", fd_num );
         else if ( ( flag & O_ACCMODE ) == O_RDWR )
-            sprintf ( dest->file_descriptior, "%du", fd_num );
+            snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "%du", fd_num );
         else
-            sprintf ( dest->file_descriptior, "ERR" );
+            snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "ERR" );
     }
 
     // check deleted file
@@ -345,7 +345,7 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 
     if ( search_ptr != NULL && strcmp ( search_ptr + 1, "(deleted)" ) == 0 )
     {
-        sprintf ( dest->file_descriptior, "del" );
+        snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "del" );
     }
 
     fclose ( fd_info );
@@ -354,8 +354,8 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 void set_common_file_stat ( FILE_LIST * dest, const FILE_LIST template )
 {
     /* common field */
-    strcpy ( dest->command, template.command );
-    strcpy ( dest->user_name, template.user_name );
+    strncpy_append ( dest->command, template.command, COMMAND_NAME_MAX - 1 );
+    strncpy_append ( dest->user_name, template.user_name, COMMAND_NAME_MAX - 1 );
 
     dest->pid  = template.pid;
     dest->next = NULL;

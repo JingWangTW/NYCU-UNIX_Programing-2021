@@ -30,7 +30,7 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template );
 PID_VECTOR get_all_pids ( )
 {
     int pid_count = 0;
-    char test_name_buf[NAME_MAX + 1];
+    char test_name_buf[FILE_NAME_MAX];
 
     pid_t temp_pid;
     PID_VECTOR res;
@@ -44,7 +44,7 @@ PID_VECTOR get_all_pids ( )
     // read all entry in the directory
     while ( ( proc_dir_entry = readdir ( proc_dir ) ) != NULL )
     {
-        memset ( test_name_buf, 0, sizeof ( char ) * ( NAME_MAX + 1 ) );
+        memset ( test_name_buf, 0, sizeof ( char ) * ( FILE_NAME_MAX ) );
         // only find directory
         if ( proc_dir_entry->d_type == DT_DIR )
         {
@@ -85,8 +85,8 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
     int check_filter;
     int proc_cnt;
     int non_empty_proc_cnt;
-    char command[NAME_MAX + 1];
-    char username[LOGIN_NAME_MAX + 1];
+    char command[COMMAND_NAME_MAX];
+    char username[USER_NAME_MAX];
     pid_t current_pid;
 
     FILE_LIST template;
@@ -108,8 +108,8 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
         proc_tail = NULL;
 
         /* reset buf */
-        memset ( command, 0, sizeof ( char ) * ( NAME_MAX + 1 ) );
-        memset ( username, 0, sizeof ( char ) * ( LOGIN_NAME_MAX + 1 ) );
+        memset ( command, 0, sizeof ( char ) * ( COMMAND_NAME_MAX ) );
+        memset ( username, 0, sizeof ( char ) * ( USER_NAME_MAX ) );
 
         /* The current progress pid */
         current_pid = all_pid.pids[proc_cnt];
@@ -123,8 +123,8 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
             continue;
 
         /* generate a template file node for current process */
-        strcpy ( template.command, command );
-        strcpy ( template.user_name, username );
+        strncpy_append ( template.command, command, COMMAND_NAME_MAX - 1 );
+        strncpy_append ( template.user_name, username, USER_NAME_MAX - 1 );
         template.pid = current_pid;
 
         res = get_cwd ( current_pid, template );
@@ -168,9 +168,9 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
 
 int get_cmd_username ( char * command, char * username, pid_t pid )
 {
-    char temp_path[PATH_MAX];
-    char tmp_cmd_name[NAME_MAX + 2]        = { 0 };
-    char tmp_user_name[LOGIN_NAME_MAX + 2] = { 0 };
+    char temp_path[FILE_PATH_MAX];
+    char tmp_cmd_name[COMMAND_NAME_MAX] = { 0 };
+    char tmp_user_name[USER_NAME_MAX]   = { 0 };
     char line_str[1000];
     char * find_ptr;
     int find_name, find_user;
@@ -181,7 +181,7 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
     FILE * st_file;
 
     /* status file contains info we need */
-    sprintf ( temp_path, "/proc/%d/status", pid );
+    snprintf ( temp_path, FILE_PATH_MAX - 1, "/proc/%d/status", pid );
 
     /* open file to read */
     st_file = fopen ( temp_path, "r" );
@@ -200,7 +200,7 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
         {
             for ( find_ptr = find_ptr + 5; *find_ptr != '\0' && isspace ( (unsigned char) *find_ptr ); )
                 find_ptr++;
-            strcpy ( tmp_cmd_name, find_ptr );
+            strncpy_append ( tmp_cmd_name, find_ptr, COMMAND_NAME_MAX - 1 );
 
             find_name = 1;
         }
@@ -220,7 +220,7 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
                 return -1;
             }
 
-            strcpy ( tmp_user_name, password->pw_name );
+            strncpy_append ( tmp_user_name, password->pw_name, USER_NAME_MAX - 1 );
 
             find_user = 1;
         }
@@ -229,33 +229,33 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
             break;
     }
 
-    if ( tmp_cmd_name[strlen ( tmp_cmd_name ) - 1] == '\n' )
-        tmp_cmd_name[strlen ( tmp_cmd_name ) - 1] = '\0';
+    if ( tmp_cmd_name[strnlen ( tmp_cmd_name, COMMAND_NAME_MAX - 1 ) - 1] == '\n' )
+        tmp_cmd_name[strnlen ( tmp_cmd_name, COMMAND_NAME_MAX - 1 ) - 1] = '\0';
 
-    if ( tmp_user_name[strlen ( tmp_user_name ) - 1] == '\n' )
-        tmp_user_name[strlen ( tmp_user_name ) - 1] = '\0';
+    if ( tmp_user_name[strnlen ( tmp_user_name, USER_NAME_MAX - 1 ) - 1] == '\n' )
+        tmp_user_name[strnlen ( tmp_user_name, USER_NAME_MAX - 1 ) - 1] = '\0';
 
     fclose ( st_file );
 
-    strcpy ( command, tmp_cmd_name );
-    strcpy ( username, tmp_user_name );
+    strncpy_append ( command, tmp_cmd_name, COMMAND_NAME_MAX - 1 );
+    strncpy_append ( username, tmp_user_name, COMMAND_NAME_MAX - 1 );
 
     return 1;
 }
 
 FILE_LIST * get_cwd ( const pid_t pid, const FILE_LIST template )
 {
-    char cwd_path[PATH_MAX];
+    char cwd_path[FILE_PATH_MAX];
 
     FILE_LIST * res;
 
-    sprintf ( cwd_path, "/proc/%d/cwd", pid );
+    snprintf ( cwd_path, FILE_PATH_MAX - 1, "/proc/%d/cwd", pid );
 
     res = read_file_stat_path ( cwd_path, template );
 
     if ( res )
     {
-        strcpy ( res->file_descriptior, "cwd" );
+        strncpy_append ( res->file_descriptior, "cwd", FILE_DESCRIPTOR_MAX - 1 );
     }
 
     return res;
@@ -263,17 +263,17 @@ FILE_LIST * get_cwd ( const pid_t pid, const FILE_LIST template )
 
 FILE_LIST * get_root ( const pid_t pid, const FILE_LIST template )
 {
-    char root_path[PATH_MAX];
+    char root_path[FILE_PATH_MAX];
 
     FILE_LIST * res;
 
-    sprintf ( root_path, "/proc/%d/root", pid );
+    snprintf ( root_path, FILE_PATH_MAX - 1, "/proc/%d/root", pid );
 
     res = read_file_stat_path ( root_path, template );
 
     if ( res )
     {
-        strcpy ( res->file_descriptior, "root" );
+        strncpy_append ( res->file_descriptior, "root", FILE_DESCRIPTOR_MAX - 1 );
     }
 
     return res;
@@ -281,17 +281,17 @@ FILE_LIST * get_root ( const pid_t pid, const FILE_LIST template )
 
 FILE_LIST * get_exe ( const pid_t pid, const FILE_LIST template )
 {
-    char exe_path[PATH_MAX];
+    char exe_path[FILE_PATH_MAX];
 
     FILE_LIST * res;
 
-    sprintf ( exe_path, "/proc/%d/exe", pid );
+    snprintf ( exe_path, FILE_PATH_MAX - 1, "/proc/%d/exe", pid );
 
     res = read_file_stat_path ( exe_path, template );
 
     if ( res )
     {
-        strcpy ( res->file_descriptior, "exe" );
+        strncpy_append ( res->file_descriptior, "exe", FILE_DESCRIPTOR_MAX - 1 );
     }
 
     return res;
@@ -304,13 +304,13 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
     int fd_num;
     int str_parse;
 
-    char fd_dir_path[PATH_MAX];
+    char fd_dir_path[FILE_PATH_MAX];
 
     FILE_LIST * res  = NULL;
     FILE_LIST * head = NULL;
     FILE_LIST * tail = NULL;
 
-    sprintf ( fd_dir_path, "/proc/%d/fd", pid );
+    snprintf ( fd_dir_path, FILE_PATH_MAX - 1, "/proc/%d/fd", pid );
 
     fd_dir = opendir ( fd_dir_path );
 
@@ -318,11 +318,11 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
     if ( fd_dir == NULL )
     {
         res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
-        strcpy ( res->command, template.command );
+        strncpy_append ( res->command, template.command, COMMAND_NAME_MAX - 1 );
         res->pid = template.pid;
-        strcpy ( res->user_name, template.user_name );
-        strcpy ( res->file_descriptior, "NOFD" );
-        strcpy ( res->file_name, fd_dir_path );
+        strncpy_append ( res->user_name, template.user_name, USER_NAME_MAX - 1 );
+        strncpy_append ( res->file_descriptior, "NOFD", FILE_DESCRIPTOR_MAX - 1 );
+        strncpy_append ( res->file_name, fd_dir_path, FILE_PATH_MAX - 1 );
         get_error_message ( errno, "opendir", res->file_name + strlen ( res->file_name ) );
 
         res->type         = -1;
@@ -370,7 +370,7 @@ int check_command_pass ( const char * command, PROC_FILTER * filter )
     const int eflags = 0;
     int match_res;
 
-    if ( strlen ( command ) == 0 )
+    if ( strnlen ( command, COMMAND_NAME_MAX - 1 ) == 0 )
         return 0;
 
     if ( filter->command_regex )
@@ -393,7 +393,7 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter )
     const int eflags = 0;
     int match_res;
 
-    if ( strlen ( name ) == 0 )
+    if ( strnlen ( name, FILE_PATH_MAX - 1 ) == 0 )
         return 0;
 
     if ( filter->filename_regex )

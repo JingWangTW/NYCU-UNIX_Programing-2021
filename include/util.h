@@ -31,4 +31,8 @@ void * check_realloc ( void * ptr, const size_t size );
 /* Get human readable error string */
 const char * get_error_message ( int err_no, const char * func_name, char * buffer );
 
+/* A wrap function to wrap standard strncp */
+/* Will append '\0' at the end of string */
+char * strncpy_append ( char * destination, const char * source, size_t num );
+
 #endif

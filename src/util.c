@@ -40,3 +40,10 @@ const char * get_error_message ( int err_no, const char * func_name, char * buff
 
     return buffer;
 }
+
+char * strncpy_append ( char * destination, const char * source, size_t num )
+{
+    strncpy ( destination, source, num );
+    destination[num] = '\0';
+    return destination;
+}
