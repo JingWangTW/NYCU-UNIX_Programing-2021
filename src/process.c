@@ -13,10 +13,10 @@
 #include "file.h"
 #include "util.h"
 
-int get_cmd_username ( char * command, char * username, pid_t pid );
-int check_command_pass ( const char * command, PROC_FILTER * filter );
-int check_name_pass ( const char * name, const PROC_FILTER * filter );
-int check_type_pass ( FILE_TYPE type, const PROC_FILTER * filter );
+int get_cmd_and_username ( char * command, char * username, pid_t pid );
+int check_command_pass ( const char * command, const PROC_FILTER * filter );
+int check_file_path_pass ( const char * name, const PROC_FILTER * filter );
+int check_file_type_pass ( FILE_TYPE type, const PROC_FILTER * filter );
 void append_list ( FILE_LIST * target, FILE_LIST ** head, FILE_LIST ** tail );
 FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems );
 FILE_LIST * filter_apply ( const PROC_FILTER * filter, FILE_LIST * all );
@@ -27,44 +27,52 @@ FILE_LIST * get_root ( const pid_t pid, const FILE_LIST template );
 FILE_LIST * get_exe ( const pid_t pid, const FILE_LIST template );
 FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template );
 
-PID_VECTOR get_all_pids ( )
+PID_VECTOR * get_all_pids ( )
 {
     int pid_count = 0;
     char test_name_buf[FILE_NAME_MAX];
 
     pid_t temp_pid;
-    PID_VECTOR res;
     DIR * proc_dir;
     struct dirent * proc_dir_entry;
 
-    res.size = 100;
-    res.pids = (pid_t *) check_malloc ( sizeof ( pid_t ) * res.size );
+    PID_VECTOR * res;
+
     proc_dir = opendir ( "/proc" );
+
+    if ( proc_dir == NULL )
+        return NULL;
+
+    res = (PID_VECTOR *) check_malloc ( sizeof ( PID_VECTOR ) );
+    /* init the size, it may grow latter */
+    res->size = 100;
+    res->pids = (pid_t *) check_malloc ( sizeof ( pid_t ) * res->size );
 
     // read all entry in the directory
     while ( ( proc_dir_entry = readdir ( proc_dir ) ) != NULL )
     {
         memset ( test_name_buf, 0, sizeof ( char ) * ( FILE_NAME_MAX ) );
+
         // only find directory
         if ( proc_dir_entry->d_type == DT_DIR )
         {
             // skip this two special dir
             if ( strcmp ( proc_dir_entry->d_name, "." ) != 0 && strcmp ( proc_dir_entry->d_name, ".." ) != 0 )
             {
-                // get the entry that its name only contains numbers
+                // get the entry that its name contains numbers only
                 sscanf ( proc_dir_entry->d_name, "%[0-9]", test_name_buf );
 
-                if ( strcmp ( proc_dir_entry->d_name, test_name_buf ) == 0 )
+                if ( strncmp ( proc_dir_entry->d_name, test_name_buf, FILE_NAME_MAX ) == 0 )
                 {
                     sscanf ( proc_dir_entry->d_name, "%d", &temp_pid );
 
-                    if ( pid_count == res.size )
+                    if ( pid_count == res->size )
                     {
-                        res.size += 100;
-                        res.pids = check_realloc ( res.pids, sizeof ( pid_t ) * res.size );
+                        res->size += 100;
+                        res->pids = check_realloc ( res->pids, sizeof ( pid_t ) * res->size );
                     }
 
-                    res.pids[pid_count] = temp_pid;
+                    res->pids[pid_count] = temp_pid;
 
                     pid_count++;
                 }
@@ -74,19 +82,19 @@ PID_VECTOR get_all_pids ( )
 
     closedir ( proc_dir );
 
-    res.pids = check_realloc ( res.pids, sizeof ( pid_t ) * pid_count );
-    res.size = pid_count;
+    res->pids = check_realloc ( res->pids, sizeof ( pid_t ) * pid_count );
+    res->size = pid_count;
 
     return res;
 }
 
-FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
+FILE_LIST ** get_all_proc_files ( const PID_VECTOR * all_pid, const PROC_FILTER * filter )
 {
-    int check_filter;
     int proc_cnt;
-    int non_empty_proc_cnt;
+    int check_filter;
+
     char command[COMMAND_NAME_MAX];
-    char username[USER_NAME_MAX];
+    char username[USERNAME_MAX];
     pid_t current_pid;
 
     FILE_LIST template;
@@ -98,10 +106,10 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
 
     FILE_LIST ** all_proc_file_list = NULL;
 
-    all_proc_file_list = (FILE_LIST **) check_malloc ( sizeof ( FILE_LIST * ) * all_pid.size );
-    memset ( all_proc_file_list, 0, sizeof ( FILE_LIST * ) * all_pid.size );
+    all_proc_file_list = (FILE_LIST **) check_malloc ( sizeof ( FILE_LIST * ) * all_pid->size );
+    memset ( all_proc_file_list, 0, sizeof ( FILE_LIST * ) * all_pid->size );
 
-    for ( proc_cnt = 0, non_empty_proc_cnt = 0; proc_cnt < all_pid.size; proc_cnt++ )
+    for ( proc_cnt = 0; proc_cnt < all_pid->size; proc_cnt++ )
     {
         /* reset list */
         proc_head = NULL;
@@ -109,24 +117,26 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
 
         /* reset buf */
         memset ( command, 0, sizeof ( char ) * ( COMMAND_NAME_MAX ) );
-        memset ( username, 0, sizeof ( char ) * ( USER_NAME_MAX ) );
+        memset ( username, 0, sizeof ( char ) * ( USERNAME_MAX ) );
 
         /* The current progress pid */
-        current_pid = all_pid.pids[proc_cnt];
+        current_pid = all_pid->pids[proc_cnt];
 
-        /* get command by pid */
-        get_cmd_username ( command, username, current_pid );
+        /* Get command by pid */
+        if ( get_cmd_and_username ( command, username, current_pid ) == -1 )
+            continue;
 
         /* Check if command pass the filter */
         check_filter = check_command_pass ( command, filter );
         if ( !check_filter )
             continue;
 
-        /* generate a template file node for current process */
+        /* Generate a template file node for current process */
         strncpy_append ( template.command, command, COMMAND_NAME_MAX - 1 );
-        strncpy_append ( template.user_name, username, USER_NAME_MAX - 1 );
+        strncpy_append ( template.username, username, USERNAME_MAX - 1 );
         template.pid = current_pid;
 
+        /* Get files from different source */
         res = get_cwd ( current_pid, template );
         append_list ( res, &proc_head, &proc_tail );
 
@@ -154,24 +164,20 @@ FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter )
 
         proc_head = filter_apply ( filter, proc_head );
 
-        if ( proc_head )
-        {
-            all_proc_file_list[non_empty_proc_cnt] = proc_head;
-            non_empty_proc_cnt++;
-        }
+        all_proc_file_list[proc_cnt] = proc_head;
     }
 
-    qsort ( all_proc_file_list, non_empty_proc_cnt, sizeof ( FILE_LIST * ), proc_compare );
+    qsort ( all_proc_file_list, all_pid->size, sizeof ( FILE_LIST * ), proc_compare );
 
     return all_proc_file_list;
 }
 
-int get_cmd_username ( char * command, char * username, pid_t pid )
+int get_cmd_and_username ( char * command, char * username, pid_t pid )
 {
     char temp_path[FILE_PATH_MAX];
-    char tmp_cmd_name[COMMAND_NAME_MAX] = { 0 };
-    char tmp_user_name[USER_NAME_MAX]   = { 0 };
-    char line_str[1000];
+    char tmp_cmd[COMMAND_NAME_MAX]  = { '\0' };
+    char tmp_username[USERNAME_MAX] = { '\0' };
+    char line_str[1024];
     char * find_ptr;
     int find_name, find_user;
 
@@ -191,7 +197,7 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
     /* find each line in this file */
     find_user = 0;
     find_name = 0;
-    while ( fscanf ( st_file, "%1000[^\n] ", line_str ) != EOF )
+    while ( fscanf ( st_file, "%1023[^\n] ", line_str ) != EOF )
     {
         /* find "Name: " Row */
         find_ptr = strstr ( line_str, "Name:" );
@@ -200,7 +206,7 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
         {
             for ( find_ptr = find_ptr + 5; *find_ptr != '\0' && isspace ( (unsigned char) *find_ptr ); )
                 find_ptr++;
-            strncpy_append ( tmp_cmd_name, find_ptr, COMMAND_NAME_MAX - 1 );
+            strncpy_append ( tmp_cmd, find_ptr, COMMAND_NAME_MAX - 1 );
 
             find_name = 1;
         }
@@ -220,7 +226,7 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
                 return -1;
             }
 
-            strncpy_append ( tmp_user_name, password->pw_name, USER_NAME_MAX - 1 );
+            strncpy_append ( tmp_username, password->pw_name, USERNAME_MAX - 1 );
 
             find_user = 1;
         }
@@ -229,16 +235,16 @@ int get_cmd_username ( char * command, char * username, pid_t pid )
             break;
     }
 
-    if ( tmp_cmd_name[strnlen ( tmp_cmd_name, COMMAND_NAME_MAX - 1 ) - 1] == '\n' )
-        tmp_cmd_name[strnlen ( tmp_cmd_name, COMMAND_NAME_MAX - 1 ) - 1] = '\0';
+    if ( tmp_cmd[strnlen ( tmp_cmd, COMMAND_NAME_MAX - 1 ) - 1] == '\n' )
+        tmp_cmd[strnlen ( tmp_cmd, COMMAND_NAME_MAX - 1 ) - 1] = '\0';
 
-    if ( tmp_user_name[strnlen ( tmp_user_name, USER_NAME_MAX - 1 ) - 1] == '\n' )
-        tmp_user_name[strnlen ( tmp_user_name, USER_NAME_MAX - 1 ) - 1] = '\0';
+    if ( tmp_username[strnlen ( tmp_username, USERNAME_MAX - 1 ) - 1] == '\n' )
+        tmp_username[strnlen ( tmp_username, USERNAME_MAX - 1 ) - 1] = '\0';
 
     fclose ( st_file );
 
-    strncpy_append ( command, tmp_cmd_name, COMMAND_NAME_MAX - 1 );
-    strncpy_append ( username, tmp_user_name, COMMAND_NAME_MAX - 1 );
+    strncpy_append ( command, tmp_cmd, COMMAND_NAME_MAX - 1 );
+    strncpy_append ( username, tmp_username, COMMAND_NAME_MAX - 1 );
 
     return 1;
 }
@@ -299,12 +305,12 @@ FILE_LIST * get_exe ( const pid_t pid, const FILE_LIST template )
 
 FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
 {
-    DIR * fd_dir;
-    struct dirent * fd_file_dirent;
     int fd_num;
     int str_parse;
-
     char fd_dir_path[FILE_PATH_MAX];
+
+    DIR * fd_dir;
+    struct dirent * fd_file_dirent;
 
     FILE_LIST * res  = NULL;
     FILE_LIST * head = NULL;
@@ -320,10 +326,10 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
         res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
         strncpy_append ( res->command, template.command, COMMAND_NAME_MAX - 1 );
         res->pid = template.pid;
-        strncpy_append ( res->user_name, template.user_name, USER_NAME_MAX - 1 );
+        strncpy_append ( res->username, template.username, USERNAME_MAX - 1 );
         strncpy_append ( res->file_descriptior, "NOFD", FILE_DESCRIPTOR_MAX - 1 );
-        strncpy_append ( res->file_name, fd_dir_path, FILE_PATH_MAX - 1 );
-        get_error_message ( errno, "opendir", res->file_name + strlen ( res->file_name ), ERROR_STR_LEN_MAX - 1 );
+        strncpy_append ( res->file_path, fd_dir_path, FILE_PATH_MAX - 1 );
+        get_error_message ( errno, "opendir", res->file_path + strlen ( res->file_path ), ERROR_STR_LEN_MAX - 1 );
 
         res->type         = -1;
         res->inode_number = -1;
@@ -363,7 +369,7 @@ FILE_LIST * get_all_fd_files ( const pid_t pid, const FILE_LIST template )
     return head;
 }
 
-int check_command_pass ( const char * command, PROC_FILTER * filter )
+int check_command_pass ( const char * command, const PROC_FILTER * filter )
 {
     regmatch_t match;
     const int nmatch = 1;
@@ -386,7 +392,7 @@ int check_command_pass ( const char * command, PROC_FILTER * filter )
     return 1;
 }
 
-int check_name_pass ( const char * name, const PROC_FILTER * filter )
+int check_file_path_pass ( const char * name, const PROC_FILTER * filter )
 {
     regmatch_t match;
     const int nmatch = 1;
@@ -409,7 +415,7 @@ int check_name_pass ( const char * name, const PROC_FILTER * filter )
     return 1;
 }
 
-int check_type_pass ( FILE_TYPE type, const PROC_FILTER * filter )
+int check_file_type_pass ( FILE_TYPE type, const PROC_FILTER * filter )
 {
     if ( filter->type_filter )
     {
@@ -495,22 +501,15 @@ FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
         mems_prev = NULL;
 
         current_cmp_inode = all_tail->inode_number;
-        current_cmp_name  = all_tail->file_name;
+        current_cmp_name  = all_tail->file_path;
 
-        if ( mems_head != NULL && mems_head->inode_number == current_cmp_inode && strcmp ( mems_head->file_name, current_cmp_name ) == 0 )
+        /* There are no duplicated file is mems, only check once */
+        if ( mems_head != NULL && mems_head->inode_number == current_cmp_inode && strncmp ( mems_head->file_path, current_cmp_name, FILE_PATH_MAX - 1 ) == 0 )
         {
             mems_head = mems_head->next;
 
             check_free ( mems_tail );
 
-            mems_tail = mems_head;
-
-            all_tail = all_tail->next;
-            continue;
-        }
-
-        if ( mems_head == NULL )
-        {
             all_tail = all_tail->next;
             continue;
         }
@@ -520,7 +519,7 @@ FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
 
         while ( mems_tail != NULL )
         {
-            if ( mems_tail->inode_number == current_cmp_inode && strcmp ( mems_tail->file_name, current_cmp_name ) == 0 )
+            if ( mems_tail->inode_number == current_cmp_inode && strncmp ( mems_tail->file_path, current_cmp_name, FILE_PATH_MAX - 1 ) == 0 )
             {
                 mems_tail = mems_tail->next;
                 check_free ( mems_prev->next );
@@ -529,8 +528,11 @@ FILE_LIST * remove_dup_files_in_mems ( const FILE_LIST * all, FILE_LIST * mems )
                 break;
             }
 
-            mems_prev = mems_tail;
-            mems_tail = mems_tail->next;
+            if ( mems_tail != NULL )
+            {
+                mems_prev = mems_tail;
+                mems_tail = mems_tail->next;
+            }
         }
 
         all_tail = all_tail->next;
@@ -547,7 +549,8 @@ FILE_LIST * filter_apply ( const PROC_FILTER * filter, FILE_LIST * all )
 
     if ( filter->type_filter || filter->filename_regex )
     {
-        while ( head != NULL && ( check_type_pass ( head->type, filter ) == 0 || check_name_pass ( head->file_name, filter ) == 0 ) )
+        /* apply on head first */
+        while ( head != NULL && ( check_file_type_pass ( head->type, filter ) == 0 || check_file_path_pass ( head->file_path, filter ) == 0 ) )
         {
             head = head->next;
 
@@ -564,10 +567,12 @@ FILE_LIST * filter_apply ( const PROC_FILTER * filter, FILE_LIST * all )
 
         while ( tail != NULL )
         {
-            if ( check_type_pass ( tail->type, filter ) == 0 || check_name_pass ( tail->file_name, filter ) == 0 )
+            if ( check_file_type_pass ( tail->type, filter ) == 0 || check_file_path_pass ( tail->file_path, filter ) == 0 )
             {
                 tail = tail->next;
+
                 check_free ( prev->next );
+
                 prev->next = tail;
             }
             else
@@ -586,5 +591,20 @@ int proc_compare ( const void * a, const void * b )
     FILE_LIST * _a = *( (FILE_LIST **) a );
     FILE_LIST * _b = *( (FILE_LIST **) b );
 
-    return _a->pid - _b->pid;
+    if ( _a != NULL && _b != NULL )
+    {
+        return _a->pid - _b->pid;
+    }
+    else if ( _a != NULL && _b == NULL )
+    {
+        return 1;
+    }
+    else if ( _a == NULL && _b != NULL )
+    {
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
 }

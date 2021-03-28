@@ -9,7 +9,7 @@
 #include "util.h"
 
 /* Get file stat and realpath from a provided file_path */
-int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path );
+int get_file_stat ( char * real_path, struct stat * file_stat, const char * file_path );
 
 /* According to the provided pid and fd_num to set fd string in parm dest */
 void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num );
@@ -32,22 +32,22 @@ int check_filename_append_deleted ( const char * file_path );
 FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LIST template )
 {
     int get_stat_res;
-    char realpath[FILE_PATH_MAX]     = { '\0' };
-    char fd_file_name[FILE_PATH_MAX] = { '\0' };
+    char real_path[FILE_PATH_MAX]    = { '\0' };
+    char fd_flie_path[FILE_PATH_MAX] = { '\0' };
 
     struct stat file_stat;
     FILE_LIST * res;
 
-    snprintf ( fd_file_name, FILE_PATH_MAX - 1, "/proc/%d/fd/%d", pid, fd_num );
+    snprintf ( fd_flie_path, FILE_PATH_MAX - 1, "/proc/%d/fd/%d", pid, fd_num );
 
-    get_stat_res = get_file_stat ( realpath, &file_stat, fd_file_name );
+    get_stat_res = get_file_stat ( real_path, &file_stat, fd_flie_path );
 
     res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     set_common_file_stat ( res, template );
-    strncpy_append ( res->file_name, realpath, FILE_PATH_MAX - 1 );
+    strncpy_append ( res->file_path, real_path, FILE_PATH_MAX - 1 );
 
-    res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
+    res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, real_path );
     res->inode_number = file_stat.st_ino;
 
     set_fd_str_fdinfo ( res, pid, fd_num );
@@ -58,20 +58,20 @@ FILE_LIST * read_file_stat_fd ( const pid_t pid, const int fd_num, const FILE_LI
 FILE_LIST * read_file_stat_path ( const char * file_path, const FILE_LIST template )
 {
     int get_stat_res;
-    char realpath[FILE_PATH_MAX] = { '\0' };
+    char real_path[FILE_PATH_MAX] = { '\0' };
 
     struct stat file_stat;
 
     FILE_LIST * res;
 
-    get_stat_res = get_file_stat ( realpath, &file_stat, file_path );
+    get_stat_res = get_file_stat ( real_path, &file_stat, file_path );
 
     res = (FILE_LIST *) check_malloc ( sizeof ( FILE_LIST ) );
 
     set_common_file_stat ( res, template );
-    strncpy_append ( res->file_name, realpath, FILE_PATH_MAX - 1 );
+    strncpy_append ( res->file_path, real_path, FILE_PATH_MAX - 1 );
 
-    res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, realpath );
+    res->type         = get_file_type ( get_stat_res == -1 ? NULL : &file_stat, real_path );
     res->inode_number = file_stat.st_ino;
 
     return res;
@@ -82,8 +82,8 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
     int get_stat_res;
     int parse_result;
 
-    char input_str[1000];
-    char input_path[FILE_PATH_MAX];
+    char line_str[1024];
+    char path_name[FILE_PATH_MAX];
     char real_path[FILE_PATH_MAX];
     char maps_file_path[FILE_PATH_MAX];
 
@@ -109,21 +109,27 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
     }
 
     // read file line by line
-    while ( fscanf ( maps_file, "%999[^\n] ", input_str ) != EOF )
+    while ( fscanf ( maps_file, "%1023[^\n] ", line_str ) != EOF )
     {
+        /* The format of the file:
+           address           perms offset  dev   inode       pathname
+           00400000-00452000 r-xp 00000000 08:02 173521      /usr/bin/dbus-daemon
+           00651000-00652000 r--p 00051000 08:02 173521      /usr/bin/dbus-daemon
+           00652000-00655000 rw-p 00052000 08:02 173521      /usr/bin/dbus-daemon
+        */
         // parse required field only
-        parse_result = sscanf ( input_str, "%*x-%*x %*4[-rwxsp]%*x%*x:%*x%lu %[^\n] ", &inode_num, input_path );
+        parse_result = sscanf ( line_str, "%*x-%*x %*4[-rwxsp]%*x%*x:%*x%lu %[^\n] ", &inode_num, path_name );
 
         // check if parsed success
         if ( parse_result != 2 )
             continue;
 
         // skip pseudo-path
-        if ( strnlen ( input_path, FILE_PATH_MAX - 1 ) == 0 || input_path[0] == '[' )
+        if ( strnlen ( path_name, FILE_PATH_MAX - 1 ) == 0 || path_name[0] == '[' )
             continue;
 
         // get file stat and its real path
-        get_stat_res = get_file_stat ( real_path, &file_status, input_path );
+        get_stat_res = get_file_stat ( real_path, &file_status, path_name );
 
         // A file may have multiple record in the maps file due to it the file may be seperated to different memory region
         if ( find_duplicate_file ( head, inode_num, real_path ) )
@@ -143,12 +149,14 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
         else
             strncpy_append ( res->file_descriptior, "mem", FILE_DESCRIPTOR_MAX - 1 );
 
-        strncpy_append ( res->file_name, real_path, FILE_PATH_MAX - 1 );
-        res->type = get_file_type ( get_stat_res == -1 ? NULL : &file_status, input_path );
+        strncpy_append ( res->file_path, real_path, FILE_PATH_MAX - 1 );
+        res->type = get_file_type ( get_stat_res == -1 ? NULL : &file_status, path_name );
 
         // append the record to the list
         if ( head == NULL )
+        {
             head = tail = res;
+        }
         else
         {
             tail->next = res;
@@ -197,20 +205,21 @@ void get_node_str ( const FILE_LIST * file, char * buf )
         snprintf ( buf, INODE_STR_LEN_MAX - 1, "%ld", file->inode_number );
 }
 
-int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_path )
+int get_file_stat ( char * real_path, struct stat * file_stat, const char * file_path )
 {
     int fd_num;
-
     char error_str[ERROR_STR_LEN_MAX];
 
-    char special_type[64];
+    char special_type[FILE_NAME_MAX];
     ino_t special_inode;
 
     // the file path is not exist
     // just skip it
     if ( lstat ( file_path, file_stat ) == -1 )
     {
-        strncpy_append ( realpath, file_path, FILE_PATH_MAX - 1 );
+        get_error_message ( errno, "lstat", error_str, ERROR_STR_LEN_MAX - 1 );
+        snprintf ( real_path, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
+
         return -1;
     }
 
@@ -219,20 +228,20 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     {
         // try to read the symbolic link
         // the file is exist, but wrong with its link
-        if ( readlink ( file_path, realpath, FILE_PATH_MAX ) == -1 )
+        if ( readlink ( file_path, real_path, FILE_PATH_MAX ) == -1 )
         {
             get_error_message ( errno, "readlink", error_str, ERROR_STR_LEN_MAX - 1 );
-            snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
+            snprintf ( real_path, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
             return -1;
         }
 
         // A readble softlink, but can't stat it
-        if ( stat ( realpath, file_stat ) == -1 )
+        if ( stat ( real_path, file_stat ) == -1 )
         {
             // => It's a dangling symbolic link, the linked file has been deleted
-            // => If readlink() read a symbolic link under /porc, it will append a "deleted" message at the tail
-            if ( check_filename_append_deleted ( realpath ) )
+            // => If readlink() read a dangling symbolic link under /porc, it will append a "deleted" message at the tail
+            if ( check_filename_append_deleted ( real_path ) )
             {
                 fd_num = open ( file_path, O_RDONLY );
 
@@ -241,7 +250,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 if ( fd_num == -1 )
                 {
                     get_error_message ( errno, "open", error_str, ERROR_STR_LEN_MAX - 1 );
-                    snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
+                    snprintf ( real_path, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
                     return -1;
                 }
@@ -250,7 +259,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 else if ( fstat ( fd_num, file_stat ) == -1 )
                 {
                     get_error_message ( errno, "fstat", error_str, ERROR_STR_LEN_MAX - 1 );
-                    snprintf ( realpath, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
+                    snprintf ( real_path, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
 
                     return -1;
                 }
@@ -269,15 +278,15 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
                 memset ( file_stat, 0, sizeof ( struct stat ) );
 
                 // something lke: [pipe:inode] [socket:inode]
-                if ( sscanf ( realpath, "%[a-z]:[%ld]", special_type, &special_inode ) == 2 )
+                if ( sscanf ( real_path, "%[a-z]:[%ld]", special_type, &special_inode ) == 2 )
                 {
-                    strncpy_append ( realpath, special_type, FILE_PATH_MAX - 1 );
+                    strncpy_append ( real_path, special_type, FILE_PATH_MAX - 1 );
                     file_stat->st_ino = special_inode;
                 }
                 // something like: "anon_inode:<file-type>"
-                else if ( sscanf ( realpath, "anon_inode:%s", special_type ) == 1 )
+                else if ( sscanf ( real_path, "anon_inode:%s", special_type ) == 1 )
                 {
-                    strncpy_append ( realpath, special_type, FILE_PATH_MAX - 1 );
+                    strncpy_append ( real_path, special_type, FILE_PATH_MAX - 1 );
                 }
 
                 return -1;
@@ -287,7 +296,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
     else
     {
         // It's a normal file, the real path is just the same as file_path
-        strncpy_append ( realpath, file_path, FILE_PATH_MAX - 1 );
+        strncpy_append ( real_path, file_path, FILE_PATH_MAX - 1 );
     }
 
     return 0;
@@ -296,7 +305,7 @@ int get_file_stat ( char * realpath, struct stat * file_stat, const char * file_
 void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 {
     int flag;
-    char input_str[100];
+    char line_str[128];
     char * search_ptr;
     char fd_info_path[FILE_PATH_MAX];
 
@@ -306,20 +315,22 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
 
     if ( access ( fd_info_path, R_OK ) == -1 )
     {
-        get_error_message ( errno, "access", dest->file_name, FILE_PATH_MAX - 1 );
+        get_error_message ( errno, "access", dest->file_path + strnlen ( dest->file_path, FILE_PATH_MAX - 1 ), ERROR_STR_LEN_MAX - 1 );
         return;
     }
 
+    /* I believe if I can access it, I can open it */
     fd_info = fopen ( fd_info_path, "r" );
     flag    = -1;
 
-    while ( fscanf ( fd_info, "%99[^\n] ", input_str ) != EOF )
+    while ( fscanf ( fd_info, "%127[^\n] ", line_str ) != EOF )
     {
-        search_ptr = strstr ( input_str, "flags:" );
+        search_ptr = strstr ( line_str, "flags:" );
 
-        if ( search_ptr == input_str )
+        if ( search_ptr == line_str )
         {
-            sscanf ( input_str, "flags: %o", &flag );
+            /* The number is an octal number*/
+            sscanf ( line_str, "flags: %o", &flag );
             break;
         }
     }
@@ -330,18 +341,21 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
     }
     else
     {
-        if ( ( flag & O_ACCMODE ) == O_RDONLY )
+        /* Apply the mask first */
+        flag &= O_ACCMODE;
+
+        if ( flag == O_RDONLY )
             snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "%dr", fd_num );
-        else if ( ( flag & O_ACCMODE ) == O_WRONLY )
+        else if ( flag == O_WRONLY )
             snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "%dw", fd_num );
-        else if ( ( flag & O_ACCMODE ) == O_RDWR )
+        else if ( flag == O_RDWR )
             snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "%du", fd_num );
         else
             snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "ERR" );
     }
 
     // check deleted file
-    search_ptr = strrchr ( dest->file_name, ' ' );
+    search_ptr = strrchr ( dest->file_path, ' ' );
 
     if ( search_ptr != NULL && strcmp ( search_ptr + 1, "(deleted)" ) == 0 )
     {
@@ -355,7 +369,7 @@ void set_common_file_stat ( FILE_LIST * dest, const FILE_LIST template )
 {
     /* common field */
     strncpy_append ( dest->command, template.command, COMMAND_NAME_MAX - 1 );
-    strncpy_append ( dest->user_name, template.user_name, COMMAND_NAME_MAX - 1 );
+    strncpy_append ( dest->username, template.username, COMMAND_NAME_MAX - 1 );
 
     dest->pid  = template.pid;
     dest->next = NULL;
@@ -368,7 +382,7 @@ int find_duplicate_file ( const FILE_LIST * head, const ino_t inode_num, const c
 
     while ( head != NULL )
     {
-        if ( head->inode_number == inode_num && strcmp ( head->file_name, file_path ) == 0 )
+        if ( head->inode_number == inode_num && strncmp ( head->file_path, file_path, FILE_PATH_MAX - 1 ) == 0 )
             return 1;
 
         head = head->next;

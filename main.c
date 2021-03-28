@@ -1,6 +1,4 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "file.h"
 #include "io.h"
@@ -8,9 +6,11 @@
 
 int main ( const int argc, char * const * argv )
 {
-    PROC_FILTER * filter = parse_input ( argc, argv );
-    PID_VECTOR all_pids;
+    PROC_FILTER * filter;
+    PID_VECTOR * all_pids;
     FILE_LIST ** all_porc_files;
+
+    filter = parse_input ( argc, argv );
 
     if ( filter == NULL )
         exit ( EXIT_FAILURE );
@@ -19,7 +19,7 @@ int main ( const int argc, char * const * argv )
 
     all_porc_files = get_all_proc_files ( all_pids, filter );
 
-    print_result ( all_porc_files, all_pids.size );
+    print_result ( all_porc_files, all_pids->size );
 
     return 0;
 }

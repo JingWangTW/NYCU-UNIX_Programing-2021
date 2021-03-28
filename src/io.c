@@ -14,9 +14,9 @@ PROC_FILTER * check_input ( const char * command, const char * type, const char 
 PROC_FILTER * parse_input ( const int argc, char * const * argv )
 {
     int opt;
-    char * command_regex_str  = NULL;
-    char * type               = NULL;
-    char * filename_regex_str = NULL;
+    char * command_regex_str   = NULL;
+    char * file_type_input_str = NULL;
+    char * filename_regex_str  = NULL;
 
     PROC_FILTER * res;
 
@@ -28,7 +28,7 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
                 copy_from_optarg ( &command_regex_str );
                 break;
             case 't':
-                copy_from_optarg ( &type );
+                copy_from_optarg ( &file_type_input_str );
                 break;
             case 'f':
                 copy_from_optarg ( &filename_regex_str );
@@ -39,10 +39,10 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
         }
     }
 
-    res = check_input ( command_regex_str, type, filename_regex_str );
+    res = check_input ( command_regex_str, file_type_input_str, filename_regex_str );
 
     check_free ( command_regex_str );
-    check_free ( type );
+    check_free ( file_type_input_str );
     check_free ( filename_regex_str );
 
     return res;
@@ -50,9 +50,9 @@ PROC_FILTER * parse_input ( const int argc, char * const * argv )
 
 void print_result ( FILE_LIST ** file_list, int size )
 {
-    int is_first_line = 1;
     int proc_cnt;
-    char format_string[100];
+    int is_first_line = 1;
+    char format_string[128];
     char field_buffer[MAX ( PID_STR_LEN_MAX, INODE_STR_LEN_MAX )];
     char type_buffer[FILE_TYPE_STR_LEN_MAX];
     char node_buffer[INODE_STR_LEN_MAX];
@@ -76,23 +76,23 @@ void print_result ( FILE_LIST ** file_list, int size )
 
         while ( head != NULL )
         {
-            max_command = MIN ( MAX ( max_command, strnlen ( head->file_name, FILE_PATH_MAX - 1 ) ), (size_t) 9 );
+            max_command = MIN ( MAX ( max_command, strnlen ( head->file_path, FILE_PATH_MAX - 1 ) ), (size_t) 9 );
 
-            sprintf ( field_buffer, "%d", head->pid );
+            snprintf ( field_buffer, PID_STR_LEN_MAX, "%d", head->pid );
             max_pid = MAX ( max_pid, strnlen ( field_buffer, PID_STR_LEN_MAX - 1 ) );
 
-            max_user = MAX ( max_user, strnlen ( head->user_name, USER_NAME_MAX - 1 ) );
+            max_user = MAX ( max_user, strnlen ( head->username, USERNAME_MAX - 1 ) );
 
             max_fd = MAX ( max_fd, strnlen ( head->file_descriptior, FILE_DESCRIPTOR_MAX - 1 ) );
 
-            sprintf ( field_buffer, "%ld", head->inode_number );
+            snprintf ( field_buffer, INODE_STR_LEN_MAX, "%ld", head->inode_number );
             max_node = MAX ( max_node, strnlen ( field_buffer, INODE_STR_LEN_MAX - 1 ) );
 
             head = head->next;
         }
     }
 
-    sprintf ( format_string, "%%-%lds %%-%ldd %%-%lds %%-%lds %%-%ds %%-%lds %%s\n", max_command, max_pid, max_user, max_fd, max_type, max_node );
+    snprintf ( format_string, 127, "%%-%lds %%-%ldd %%-%lds %%-%lds %%-%ds %%-%lds %%s\n", max_command, max_pid, max_user, max_fd, max_type, max_node );
 
     is_first_line = 1;
     for ( proc_cnt = 0; proc_cnt < size; proc_cnt++ )
@@ -115,7 +115,7 @@ void print_result ( FILE_LIST ** file_list, int size )
                 is_first_line = 0;
             }
 
-            printf ( format_string, head->command, head->pid, head->user_name, head->file_descriptior, type_buffer, node_buffer, head->file_name );
+            printf ( format_string, head->command, head->pid, head->username, head->file_descriptior, type_buffer, node_buffer, head->file_path );
             head = head->next;
         }
     }
@@ -124,7 +124,7 @@ void print_result ( FILE_LIST ** file_list, int size )
 void copy_from_optarg ( char ** dest )
 {
     if ( *dest )
-        free ( *dest );
+        check_free ( *dest );
 
     *dest = check_malloc ( sizeof ( char ) * ( strlen ( optarg ) + 1 ) );
 
@@ -133,6 +133,7 @@ void copy_from_optarg ( char ** dest )
 
 PROC_FILTER * check_input ( const char * command, const char * type, const char * filename )
 {
+    /* Flags to accept ^ and $ */
     const int c_flags = REG_NOTBOL;
 
     regex_t temp;

@@ -12,7 +12,7 @@
 #define PID_STR_LEN_MAX       ( 32 )
 
 #define COMMAND_NAME_MAX    ( NAME_MAX + 1 )
-#define USER_NAME_MAX       ( LOGIN_NAME_MAX )
+#define USERNAME_MAX        ( LOGIN_NAME_MAX )
 #define FILE_DESCRIPTOR_MAX ( 16 )
 #define FILE_PATH_MAX       ( PATH_MAX + ERROR_STR_LEN_MAX )
 #define FILE_NAME_MAX       ( NAME_MAX + 1 )
@@ -31,12 +31,12 @@ struct file_list
 {
     char command[COMMAND_NAME_MAX];
     pid_t pid;
-    char user_name[USER_NAME_MAX];
+    char username[USERNAME_MAX];
 
     char file_descriptior[FILE_DESCRIPTOR_MAX];
     enum file_type type;
     ino_t inode_number;
-    char file_name[FILE_PATH_MAX];  // may concat with permission denied string
+    char file_path[FILE_PATH_MAX];  // may concat with permission denied string
 
     struct file_list * next;
 };

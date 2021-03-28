@@ -22,9 +22,9 @@ typedef struct pid_vector PID_VECTOR;
 typedef struct process_filter PROC_FILTER;
 
 /* get all pid number under /proc */
-PID_VECTOR get_all_pids ( );
+PID_VECTOR * get_all_pids ( );
 
 /* Get all openned files by all procs */
-FILE_LIST ** get_all_proc_files ( PID_VECTOR all_pid, PROC_FILTER * filter );
+FILE_LIST ** get_all_proc_files ( const PID_VECTOR * all_pid, const PROC_FILTER * filter );
 
 #endif
