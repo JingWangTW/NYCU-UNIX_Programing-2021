@@ -10,107 +10,114 @@ make
 ./hw1
 ```
 
-## About the implementation
+## About the implementation issue
 
 ### `COMMAND`
-* In the real `lsof(8)`, the `COMMAND` field will only show first nine characters of UNIX command associated with the process.
+* In the real [`lsof(8)`](https://linux.die.net/man/8/lsof), the `COMMAND` field will only show the first nine characters of the UNIX command associated with the process.
 * There has no relative restriction in the homework spec. (Maybe just print it all. 🤔)
-* I chose to follow `lsof(8)`, jsut print first nine characters.
+* I chose to follow `lsof(8)`, just print the first nine characters.
 
 ### `FD` - `exe`
-* The real [`lsof(8)`](https://linux.die.net/man/8/lsof) has no fd type `exe`.
-* The homework spec [said](Spec.md#L43) the fd type `exe` is gotten from `/proc/{pid}/exe`.
-* In the real `lsof(8)`, the FD of executable is `txt`.
-* In the real `lsof(8)`, if the real `/proc/{pid}/exe` is not exist, it will not be shown in the result.
-* In this implementation, I chose to show it with error text ,` (readlink: File Not Found)`, behind.
+* The real [`lsof(8)`](https://linux.die.net/man/8/lsof) has no FD type with `exe`.
+* The homework spec [said](Spec.md#L43) the FD type `exe` is gotten from `/proc/{pid}/exe`.
+* In the real `lsof(8)`, the FD of executable of the process is `txt`.
+* In the real `lsof(8)`, if the real `/proc/{pid}/exe` does not existed, it will not be shown in the result.
+* In this implementation, I chose to show it with error text behind the file name.
 
 ### `FD` - `mem`
-* There are some pseudo-paths under in file `/proc/{pid}/maps`.
-* In the real `lsof(8)`, these files would not be printed.
+#### Pseudo path
+* There are some pseudo-paths record in file `/proc/{pid}/maps`.
+* In the real [`lsof(8)`](https://linux.die.net/man/8/lsof), these files would not be printed.
 * There has no instruction in homework spec for this case.
-* In this implementation, I chose to not show these info either.
+* In this implementation, I chose to not show this infos either.
+#### exe file
+* The `exe` file of the process will also show in `/proc/{pid}/maps` file.
+* In the real [`lsof(8)`](https://linux.die.net/man/8/lsof), it will not be shown again.
+* There is no clear instruction of this situation in the homework spec. You can only observe it by the example in the homework spec. `exe` file shows twice in the example in the homework spec.
+* In this implementation, I chose to follow the real `lsof(8)` to not show it again.
 
 ### `TYPE`
-* In some cases, the symbolic file under `/proc/{pid}/fd` may link to a fd that have no inode.
-* These fd are produced by `bpf(2)`, `epoll_create(2)`, etc.
-* The result of `readlink` for these files would be formatted as  
+* In some cases, the symbolic file under `/proc/{pid}/fd` may link to a FD that has no inode.
+* These FDs are produced by [`bpf(2)`](https://man7.org/linux/man-pages/man2/bpf.2.html), [`epoll_create(2)`](https://man7.org/linux/man-pages/man2/epoll_create.2.html), etc.
+* The result of [`readlink(2)`](https://man7.org/linux/man-pages/man2/readlinkat.2.html) for these files would be formatted as  
     `anon_inode:<file-type>`
 * In this implementation
-    * I chose to show `unknown` in `TYPE` field.
-    * In `NAME`  field, I chose to follow the real `lsof(8)` to show the `<file-type>` only.
+    * I chose to show `unknown` in the `TYPE` field.
+    * In `NAME` field, I chose to follow the real [`lsof(8)`](https://linux.die.net/man/8/lsof) to show the `<file-type>` only.
 
 ### Sorting Output
-* There are no restricted rules about the sorting of result.
-* In this implementation, it was sorted by follwing order:
+* There are no restricted rules about the sorting of results.
+* In this implementation, it was sorted by the following order:
     * `PID`
     * `TYPE`
         * `cwd`
         * `root`
         * `exe`
         * `mem`
-            * Follow by the order in `/proc/{pid}/maps`
+            * Follow by the order in `/proc/{pid}/maps`.
         * `del`
         * `[0-9]+[rwu]`
-            * Follow by the order get from `readdir()` with `/proc/{pid}/fd`
+            * Follow by the order get from [`readdir(2)`](https://man7.org/linux/man-pages/man2/readdir.2.html) with `/proc/{pid}/fd`.
         * `NOFD`
+
 ## Reference
 ### Work Relative
 * `/proc`:
     * In short, in this homework, we only need the number-named directory under `/proc`.
-    * Each numbered directory `/proc` match an alive(may run, sleep, etc.) process and the name of the directory is the `pid` of the process.
+    * Each numbered directory `/proc` matches an alive(may run, sleep, etc.) process and the name of the directory is the `pid` of the process.
     * The purpose of other files/dirs under `/proc` you can see [here](https://tldp.org/LDP/Linux-Filesystem-Hierarchy/html/proc.html).
     * Most below info about files/dirs under `/proc` is capture from [proc(5)](https://man7.org/linux/man-pages/man5/procfs.5.html).
 * `COMMAND`:
     * `/proc/{pid}/comm`
     * You can get the `COMMAND` by reading `/proc/{pid}/comm` file.
-    * Another approaches: 
-        * `Name` filed in `/proc/{pid}/status` file.
-        * Second filed in `/proc/{pid}/stat` file. Show in parenthesses. 
+    * Other approaches: 
+        * `Name` field in `/proc/{pid}/status` file.
+        * Second field in `/proc/{pid}/stat` file. Show in parentheses. 
 * `USER`:
     * I got this in two steps:
         * First: Get (real) uid that ran the process from `/proc/{pid}/status`.
-        * Second: Use uid to get respective user name.
+        * Second: Use uid to get the respective user name.
     * `Uid`:
         * There are four numbers in Uid field in `/proc/{pid}/status`.
-        * They are: Real, effective, saved set, and filesystem UIDs.
+        * They are: real, effective, saved set, and filesystem UIDs.
 * `FD`:
     * `cwd`: 
         * `/proc/{pid}/cwd`
         * The current working directory (cwd) of the process.
         * `/proc/{pid}/cwd` is a symbolic link to the cwd of the process.
-        * Need to get the file info that the link point to.
-        * **Warn**: Need to check the permission to dereference symbilic link.
+        * Need to get the file info that the symbolic link to.
+        * **Warn**: Need to check the permission to dereference the symbilic.
     * `root`: 
         * `/proc/{pid}/root`
-        * `/proc/{pid}/root` is a symbolic link to that points to the process's root directory.
-        * UNIX and Linux support the idea of a per-process root of the filesystem, set by the `chroot(2)` system call.
-        * Need to get the file info that the link point to.
-        * **Warn**: Need to check the permission to dereference symbilic link.
+        * `/proc/{pid}/root` is a symbolic link to the process's root directory.
+        * UNIX and Linux support the idea of a per-process root of the filesystem, set by the [`chroot(2)`](https://man7.org/linux/man-pages/man2/chroot.2.html) system call.
+        * Need to get the file info that the symbolic link to.
+        * **Warn**: Need to check the permission to dereference the symbolic.
     * `exe`: 
         * `/proc/{pid}/exe`
         * Under Linux 2.2 and later
             * `/proc/{pid}/exe` is a symbolic link containing the actual pathname of the executed command.
-            * If the pathname has been unlinked, the symbolic link will contain the string '(deleted)' appended to the original pathname.
+            * If the pathname has been unlinked, the symbolic link will contain the string `'(deleted)'` appended to the original pathname.
             * In a multithreaded process, the contents of this symbolic link are not available if the main thread has already terminated.
-            * **Warn**: The real `exe` file may not exist though you can get it by listed `/proc/{pid}` and see its status from `stat()`. Need to check the error code return from `readlink()`.
+            * **Warn**: The real `exe` file may not exist though you can get it by listed `/proc/{pid}` and see its status from `stat()`. Need to check the error code return from [`readlink(2)`](https://man7.org/linux/man-pages/man2/readlink.2.html).
         * Under Linux 2.0 and earlier
-            * `/proc/{pid}/exe` is a pointer to the binary which was executed, and appears as a symbolic link.
+            * `/proc/{pid}/exe` is a pointer to the binary which was executed and appears as a symbolic link.
             * A `readlink(2)` call on this file under Linux 2.0 returns a string in the format: 
                 `[device]:inode`
     * `[0-9]+[rwu]`, `del`:
         * `/proc/{pid}/fd/{fd_no}`, `/proc/{pid}/fdinfo/{fd_no}`, 
         * `/proc/{pid}/fd/{fd_no}`
-            * You can get what file has been opened by process in `/proc/{pid}/fd/{fd_no}`. The name of the file under `/proc/{pid}/fd` is the respective file descriptor.
+            * You can get what file has been opened by a process in `/proc/{pid}/fd/{fd_no}`. The name of the file under `/proc/{pid}/fd` is the respective file descriptor.
             * Each file under `/proc/{pid}/fd` is a symbolic link to the actual file.
         * `/proc/{pid}/fdinfo/{fd_no}`
             * You can get the file access mode and status flags from the `flags` field in `/proc/{pid}/fdinfo/{fd_no}`.
             * **Warn**: `flags` field is an octal number.
         * **Hint**: In some cases, though the file is being opened by a process, it still can be deleted.
-            * Yes, it's possible. In this case,the file still can be readable by the process. And the file would be actually deleted after process terminated. However, you are not able to see it listed in the disk file system.
-            * In this case, the string `(deleted)` would be appended in the result of `readlink()`.
+            * Yes, it's possible. In this case, the file still can be readable by the process. And the file would be actually deleted after the process terminated. However, you are not able to see it listed in the disk file system.
+            * In this case, the string `(deleted)` would be appended in the result of [`readlink(2)`](https://man7.org/linux/man-pages/man2/readlink.2.html).
             * You can get the inode of deleted file (not the link itself) by following two steps:
-                * Get a local fd from the result of `open()` `/proc/{pid}/fd/{fd_no}`. (Just open it.)
-                * Feed the local fd to the `fstat()` and you will get the inode of the deleted file.
+                * Get a local fd from the result of [`open(2)`](https://man7.org/linux/man-pages/man2/open.2.html) with `/proc/{pid}/fd/{fd_no}` file. (Just open it. Treat `/proc/{pid}/fd/{fd_no}` as a normal file.)
+                * Feed the local fd to the [`fstat(2)`](https://man7.org/linux/man-pages/man2/fstat.2.html) and you will get the inode of the deleted file.
         * **Hint**: 
             * If the file descriptor is for pipes or sockets, the result of `readlink()` will be 
                 `type:[inode]`.
@@ -127,9 +134,9 @@ make
                 ```
             * The value in `perms` field would be `r`(read), `w`(write), `x`(execute), `s`(shared), `p`(private).
             * There are some pseudo-paths:
-                * `[stack]`, `[stack:<tid>]`, `[vdso]`, `[heap]`
+                * `[stack]`, `[stack:<tid>]`, `[vdso]`, `[heap]`, etc.
         * **Warn**: Need to check the permission to read `/proc/{pid}/maps`.
-        * **Hint**: `pathname` may be appended `(deleted)` indicate the file has been deleted. Need to change `FD` field from `mem` to `del`.
+        * **Hint**: `pathname` may be appended `(deleted)` to indicate the file has been deleted. Need to change `FD` field from `mem` to `del`.
 
 ### Programing Relative
 * Parsing Arguments
