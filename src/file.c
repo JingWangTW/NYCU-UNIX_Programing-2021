@@ -111,6 +111,9 @@ FILE_LIST * read_maps_file ( const pid_t pid, const FILE_LIST template )
     // read file line by line
     while ( fscanf ( maps_file, "%1023[^\n] ", line_str ) != EOF )
     {
+        // reset path buffer
+        memset ( path_name, 0, sizeof ( FILE_PATH_MAX - 1 ) );
+
         /* The format of the file:
            address           perms offset  dev   inode       pathname
            00400000-00452000 r-xp 00000000 08:02 173521      /usr/bin/dbus-daemon
@@ -217,8 +220,16 @@ int get_file_stat ( char * real_path, struct stat * file_stat, const char * file
     // just skip it
     if ( lstat ( file_path, file_stat ) == -1 )
     {
-        get_error_message ( errno, "lstat", error_str, ERROR_STR_LEN_MAX - 1 );
-        snprintf ( real_path, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
+        // If it is a deleted file, of course we can't do anything
+        if ( check_filename_append_deleted ( file_path ) )
+        {
+            strncpy_append ( real_path, file_path, FILE_PATH_MAX - 1 );
+        }
+        else
+        {
+            get_error_message ( errno, "lstat", error_str, ERROR_STR_LEN_MAX - 1 );
+            snprintf ( real_path, FILE_PATH_MAX - 1, "%s %s", file_path, error_str );
+        }
 
         return -1;
     }
@@ -355,9 +366,7 @@ void set_fd_str_fdinfo ( FILE_LIST * dest, const pid_t pid, const int fd_num )
     }
 
     // check deleted file
-    search_ptr = strrchr ( dest->file_path, ' ' );
-
-    if ( search_ptr != NULL && strcmp ( search_ptr + 1, "(deleted)" ) == 0 )
+    if ( check_filename_append_deleted ( search_ptr ) )
     {
         snprintf ( dest->file_descriptior, FILE_DESCRIPTOR_MAX - 1, "del" );
     }
