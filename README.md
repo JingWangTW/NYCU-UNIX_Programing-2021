@@ -12,7 +12,7 @@
 * make version: GNU Make 4.2.1
 
 ## About the Repository
-* You could view each homework implementation in the respective branch.
+* You could view each homework implementation in the respective [branch](https://github.com/JingWangTW/NYCU-UNIX_Programing-2021/branches).
 
-## About the Homeworks
-* HW1: Implement a `lsof`-like program
+## About Homeworks
+* [HW1: Implement a `lsof`-like program](https://github.com/JingWangTW/NYCU-UNIX_Programing-2021/tree/HW1)
