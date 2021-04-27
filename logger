@@ -1,0 +1,103 @@
+#!/bin/bash
+
+lib_path=./logger.so
+command=()
+output_file=
+
+print_help()
+{
+    echo 'usage: ./logger [-o file] [-p sopath] [--] cmd [cmd args ...]'
+    echo '    -p: set the path to logger.so, default = ./logger.so'
+    echo '    -o: print output to file, print to "stderr" if no file specified'
+    echo '    --: separate the arguments for logger and for the command'
+
+    exit 1
+}
+
+parse_args()
+{   
+    # variable to mark that the next argument is the value of -p
+    lib_path_now=0
+
+    # variable to mark that the next argument is the value of -o
+    output_now=0
+
+    # variable to mark if the remaing arguments is parts of the command
+    # 0: the next input arguments is not part of the command
+    # 1: the next input argumnets "could be" a part of the command
+    # 2: the next input argumnets "must be" a part of the command
+    cmd_now=1
+
+    for arg in $@
+    do
+        case $arg in
+            -p)
+                # all the input now is part of the command
+                if [ "$cmd_now" = "2" ]
+                then 
+                    command=(${command[*]} $arg)
+                else
+                    lib_path_now=1
+                    cmd_now=0
+                fi
+                ;;
+            -o)
+                # all the input now is part of the command
+                if [ "$cmd_now" = "2" ]
+                then 
+                    command=(${command[*]} $arg)
+                else
+                    output_now=1
+                    cmd_now=0 
+                fi
+                ;;
+            --)
+                # all the remaining input is part of the command
+                cmd_now=2
+                ;;
+            *)
+                if [ "$lib_path_now" = "1" ]
+                then
+                    lib_path=$arg
+                    lib_path_now=0
+                    cmd_now=1
+                elif [ "$output_now" = "1" ]
+                then
+                    output_file=$arg
+                    output_now=0
+                    cmd_now=1
+                elif [ "$cmd_now" = "1"  ] || [ "$cmd_now" = "2"  ]
+                then
+                    cmd_now=2
+                    command=(${command[*]} $arg)
+                else
+                    # should not go here
+                    print_help
+                fi
+                ;;
+        esac
+
+        # wrong input
+        # lost value of -p or -o
+        if ( [ "$lib_path_now" = "1"  ] && [ "$output_now" = "1" ] ) || ( [ "$cmd_now" = "2"  ] && ( [ "$lib_path_now" = "1"  ] || [ "$output_now" = "1" ] ) )
+        then
+            print_help
+        fi
+        
+    done
+}
+
+check_args()
+{
+    if [ "${#command[@]}" = "0" ]
+    then
+        echo no command given.
+        exit 1
+    fi
+}
+
+parse_args $@
+
+check_args 
+
+LD_PRELOAD=$lib_path ${command[@]}
