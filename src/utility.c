@@ -14,6 +14,7 @@ static int ( *linux_open ) ( const char *, int, ... )      = NULL;
 static int ( *linux_read ) ( int, void *, size_t )         = NULL;
 static int ( *linux_remove ) ( const char * )              = NULL;
 static int ( *linux_creat ) ( const char *, mode_t )       = NULL;
+static int ( *linux_rename ) ( const char *, const char * );
 
 FILE * get_output_file ( )
 {
@@ -98,6 +99,14 @@ void * get_linux_func ( const char * func_name )
             linux_creat = dlsym ( RTLD_NEXT, "creat" );
         }
         ret = linux_creat;
+    }
+    else if ( strcmp ( func_name, "rename" ) == 0 )
+    {
+        if ( linux_rename == NULL )
+        {
+            linux_rename = dlsym ( RTLD_NEXT, "rename" );
+        }
+        ret = linux_rename;
     }
 
     if ( ret == NULL )
