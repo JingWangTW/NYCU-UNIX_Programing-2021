@@ -1,6 +1,3 @@
-#define _GNU_SOURCE
-
-#include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -8,15 +5,12 @@
 
 ssize_t read ( int fd, void * buf, size_t count )
 {
-    static int ( *linux_read ) ( int, void *, size_t ) = NULL;
+    int ( *linux_read ) ( int, void *, size_t ) = NULL;
     int ret_value;
 
     FILE * output_file = get_output_file ( );
 
-    if ( linux_read == NULL )
-    {
-        linux_read = dlsym ( RTLD_NEXT, "read" );
-    }
+    linux_read = get_linux_func ( "read" );
 
     ret_value = linux_read ( fd, buf, count );
 

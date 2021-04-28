@@ -1,6 +1,3 @@
-#define _GNU_SOURCE
-
-#include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -8,15 +5,12 @@
 
 int close ( int fd )
 {
-    static int ( *linux_close ) ( int ) = NULL;
+    int ( *linux_close ) ( int ) = NULL;
     int ret_value;
 
     FILE * output_file = get_output_file ( );
 
-    if ( linux_close == NULL )
-    {
-        linux_close = dlsym ( RTLD_NEXT, "close" );
-    }
+    linux_close = get_linux_func ( "close" );
 
     ret_value = linux_close ( fd );
 

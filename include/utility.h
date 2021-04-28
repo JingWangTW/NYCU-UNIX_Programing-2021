@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 FILE * get_output_file ( );
+void * get_linux_func ( const char * func_name );
 void * close_output_file ( FILE * output_file );
 const char * get_realpath ( const char * path );
 const char * get_fd_file_name ( int fd );

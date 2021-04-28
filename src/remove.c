@@ -1,6 +1,3 @@
-#define _GNU_SOURCE
-
-#include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -8,15 +5,12 @@
 
 int remove ( const char * pathname )
 {
-    static int ( *linux_remove ) ( const char * ) = NULL;
+    int ( *linux_remove ) ( const char * ) = NULL;
     int ret_value;
 
     FILE * output_file = get_output_file ( );
 
-    if ( linux_remove == NULL )
-    {
-        linux_remove = dlsym ( RTLD_NEXT, "remove" );
-    }
+    linux_remove = get_linux_func ( "remove" );
 
     ret_value = linux_remove ( pathname );
 

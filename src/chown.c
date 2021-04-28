@@ -1,6 +1,3 @@
-#define _GNU_SOURCE
-
-#include <dlfcn.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -9,15 +6,12 @@
 
 int chown ( const char * pathname, uid_t owner, gid_t group )
 {
-    static int ( *linux_chown ) ( const char *, uid_t, gid_t ) = NULL;
+    int ( *linux_chown ) ( const char *, uid_t, gid_t ) = NULL;
     int ret_value;
 
     FILE * output_file = get_output_file ( );
 
-    if ( linux_chown == NULL )
-    {
-        linux_chown = dlsym ( RTLD_NEXT, "chown" );
-    }
+    linux_chown = get_linux_func ( "chown" );
 
     ret_value = linux_chown ( pathname, owner, group );
 
