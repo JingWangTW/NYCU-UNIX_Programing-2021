@@ -20,7 +20,7 @@ int chmod ( const char * pathname, mode_t mode )
 
     ret_value = linux_chmod ( pathname, mode );
 
-    fprintf ( output_file, "[logger] chomd(%s, %d) = %d", pathname, mode, ret_value );
+    fprintf ( output_file, "[logger] chomd(\"%s\", %o) = %d\n", get_realpath ( pathname ), mode, ret_value );
 
     close_output_file ( output_file );
 

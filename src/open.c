@@ -27,7 +27,7 @@ int open ( const char * pathname, int flags, ... )
 
     ret_value = linux_open ( pathname, flags, mode );
 
-    fprintf ( output_file, "[logger] open(%s, %d, %d) = %d\n", pathname, flags, mode, ret_value );
+    fprintf ( output_file, "[logger] open(\"%s\", %o, %o) = %d\n", get_realpath ( pathname ), flags, mode, ret_value );
 
     close_output_file ( output_file );
 

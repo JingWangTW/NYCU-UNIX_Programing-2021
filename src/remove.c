@@ -20,7 +20,7 @@ int remove ( const char * pathname )
 
     ret_value = linux_remove ( pathname );
 
-    fprintf ( output_file, "[logger] remove(%p) = %d\n", pathname, ret_value );
+    fprintf ( output_file, "[logger] remove(\"%s\") = %d\n", get_realpath ( pathname ), ret_value );
 
     close_output_file ( output_file );
 

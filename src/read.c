@@ -20,7 +20,7 @@ ssize_t read ( int fd, void * buf, size_t count )
 
     ret_value = linux_read ( fd, buf, count );
 
-    fprintf ( output_file, "[logger] read(%d, %p, %ld) = %d\n", fd, buf, count, ret_value );
+    fprintf ( output_file, "[logger] read(\"%s\", \"%s\", %ld) = %d\n", get_fd_file_name ( fd ), get_output_str ( buf ), count, ret_value );
 
     close_output_file ( output_file );
 

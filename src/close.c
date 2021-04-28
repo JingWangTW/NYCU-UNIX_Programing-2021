@@ -20,7 +20,7 @@ int close ( int fd )
 
     ret_value = linux_close ( fd );
 
-    fprintf ( output_file, "[logger] close(%d) = %d\n", fd, ret_value );
+    fprintf ( output_file, "[logger] close(\"%s\") = %d\n", get_fd_file_name ( fd ), ret_value );
 
     close_output_file ( output_file );
 
