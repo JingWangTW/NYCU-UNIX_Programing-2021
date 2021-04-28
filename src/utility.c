@@ -13,6 +13,7 @@ static int ( *linux_close ) ( int )                        = NULL;
 static int ( *linux_open ) ( const char *, int, ... )      = NULL;
 static int ( *linux_read ) ( int, void *, size_t )         = NULL;
 static int ( *linux_remove ) ( const char * )              = NULL;
+static int ( *linux_creat ) ( const char *, mode_t )       = NULL;
 
 FILE * get_output_file ( )
 {
@@ -89,6 +90,14 @@ void * get_linux_func ( const char * func_name )
             linux_remove = dlsym ( RTLD_NEXT, "remove" );
         }
         ret = linux_remove;
+    }
+    else if ( strcmp ( func_name, "creat" ) == 0 )
+    {
+        if ( linux_creat == NULL )
+        {
+            linux_creat = dlsym ( RTLD_NEXT, "creat" );
+        }
+        ret = linux_creat;
     }
 
     if ( ret == NULL )
