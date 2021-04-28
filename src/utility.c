@@ -20,7 +20,7 @@ FILE * get_output_file ( )
     }
     else
     {
-        output_file = fopen ( file_name, "a" );
+        output_file = linux_fopen ( file_name, "a" );
     }
 
     if ( output_file == NULL )

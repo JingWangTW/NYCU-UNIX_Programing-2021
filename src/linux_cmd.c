@@ -112,6 +112,18 @@ int linux_fclose ( FILE * stream )
     return __fclose ( stream );
 }
 
+FILE * linux_fopen ( const char * pathname, const char * mode )
+{
+    static FILE * ( *__fopen ) ( const char *, const char * ) = NULL;
+
+    if ( __fopen == NULL )
+    {
+        __fopen = dlsym ( RTLD_NEXT, "fopen" );
+    }
+
+    return __fopen ( pathname, mode );
+}
+
 FILE * linux_tmpfile ( )
 {
     static FILE * ( *__tmpfile ) ( ) = NULL;
