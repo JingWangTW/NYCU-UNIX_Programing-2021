@@ -5,6 +5,8 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
+#include "linux_cmd.h"
+
 FILE * get_output_file ( )
 {
     FILE * output_file = NULL;
@@ -31,9 +33,9 @@ FILE * get_output_file ( )
 
 void close_output_file ( FILE * output_file )
 {
-    if ( output_file == stderr )
+    if ( output_file != stderr )
     {
-        fclose ( output_file );
+        linux_fclose ( output_file );
     }
 }
 

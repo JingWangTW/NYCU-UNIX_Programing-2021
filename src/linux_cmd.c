@@ -99,3 +99,15 @@ int linux_rename ( const char * oldpath, const char * newpath )
 
     return __rename ( oldpath, newpath );
 }
+
+int linux_fclose ( FILE * stream )
+{
+    static int ( *__fclose ) ( FILE * ) = NULL;
+
+    if ( __fclose == NULL )
+    {
+        __fclose = dlsym ( RTLD_NEXT, "fclose" );
+    }
+
+    return __fclose ( stream );
+}
