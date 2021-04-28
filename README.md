@@ -14,6 +14,15 @@ make
 ```
 
 ## Reference
+### `open(2)`
+* [`open(2)`](https://linux.die.net/man/2/open)
+* There are two function prototypes in man page.
+* However, there should only be one function declaration for the same name in C.
+* You can find how the real `open(2)` declararion in `/usr/include/fcntl.h`.
+    ```c
+    int open (const char *__file, int __oflag, ...);
+    ```
+* Use `va_*` family macros to deal with the unnamed arguments.
 ### Shared Library Compilation
 * Compile single file in project
     ```bash
@@ -39,6 +48,7 @@ make
     ```bash
     ldd -r ./libsrc.so
     ```
+
 ### `dlsym(3)`
 * [`dlsym(3)`](https://linux.die.net/man/3/dlsym)
 * `void *dlsym(void *handle, const char *symbol);`
@@ -49,10 +59,10 @@ make
         * `RELD_DEFAULT`: Find the first occurrence of the desired symbol using the default shared object search order.
         * `RELD_NEXT`: Find the next occurrence of the desired symbol in the search order after the current object.
         * If going to using this two pseudo-hanlders, need to define `_GNU_SOURCE` before include `dlfcn.h`.
-        ```c
-        #define _GNU_SOURCE
-        #include <dlfcn.h>
-        ```
+            ```c
+            #define _GNU_SOURCE
+            #include <dlfcn.h>
+            ```
 * `const char * symbol`
     * The symbol we are going to find.
     * If want to find a symbol that was contained in a shared object which was written in `c++`, eg. the symbol may become mangled name, you can solve it in two situation.
@@ -60,7 +70,7 @@ make
             * Wrap c++ code with
                 ```c
                 #ifdef __cplusplus
-                    extren "C"
+                    extern "C"
                     {
                 #endif
 
@@ -77,6 +87,50 @@ make
                 readelf --sym ./libsrc.so
                 ```
 
+### `stdarg.h(3)`
+* [`stdarg(3)`](https://linux.die.net/man/3/stdarg)
+* Define four macro functions and one type.
+```c
+void easy_printf (char *fmt, int last_args, ...)   /* '...' is C syntax for a variadic function */
+{
+    /*
+        Declare the variable to store all the rest variables
+    */
+    va_list  ap;    
+    
+    /* 
+        Initialize the var ap, 
+        
+        First argument for the va_start: variable to save the rest variable
+        Second argument for the va_start: the last named variable of this foo() function.
+    */
+    va_start(ap, last_args);    
+
+    while (*fmt) {
+        switch (*fmt++) {
+        case 's':            
+            /* 
+                Get the rest arguments
+                
+                First argument for the va_arg: variable for saving the rest variable
+                Second argument for the va_arg: the type of this argumnet
+            */  
+            s = va_arg(ap, char *);     
+            printf("string %s\n", s);
+            break;
+        case 'd':             
+            d = va_arg(ap, int);
+            printf("int %d\n", d);
+            break;
+        }
+    }
+
+    /* 
+        Terminate to resolve the rest arguments
+    */
+    va_end(ap);
+}
+```
 
 ### Shell Script
 * [`bash(1)`](https://linux.die.net/man/1/bash)    
