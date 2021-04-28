@@ -1,16 +1,14 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+#include "linux_cmd.h"
 #include "utility.h"
 
 int creat ( const char * pathname, mode_t mode )
 {
-    int ( *linux_creat ) ( const char *, mode_t );
     int ret_value;
 
     FILE * output_file = get_output_file ( );
-
-    linux_creat = get_linux_func ( "creat" );
 
     ret_value = linux_creat ( pathname, mode );
 

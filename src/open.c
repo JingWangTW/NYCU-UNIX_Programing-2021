@@ -1,13 +1,13 @@
-#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
+#include "linux_cmd.h"
 #include "utility.h"
 
 int open ( const char * pathname, int flags, ... )
 {
     // the real open(2) can accept two or three arguments
-    int ( *linux_open ) ( const char *, int, ... ) = NULL;
     int ret_value;
     mode_t mode;
 
@@ -16,8 +16,6 @@ int open ( const char * pathname, int flags, ... )
     mode = va_arg ( input_args, mode_t );
 
     FILE * output_file = get_output_file ( );
-
-    linux_open = get_linux_func ( "open" );
 
     ret_value = linux_open ( pathname, flags, mode );
 
