@@ -111,3 +111,15 @@ int linux_fclose ( FILE * stream )
 
     return __fclose ( stream );
 }
+
+FILE * linux_tmpfile ( )
+{
+    static FILE * ( *__tmpfile ) ( ) = NULL;
+
+    if ( __tmpfile == NULL )
+    {
+        __tmpfile = dlsym ( RTLD_NEXT, "tmpfile" );
+    }
+
+    return __tmpfile ( );
+}

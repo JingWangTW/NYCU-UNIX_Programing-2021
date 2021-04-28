@@ -13,5 +13,6 @@ int linux_remove ( const char * pathname );
 int linux_creat ( const char * pathname, mode_t mode );
 int linux_rename ( const char * oldpath, const char * newpath );
 int linux_fclose ( FILE * stream );
+FILE * linux_tmpfile ( );
 
 #endif
