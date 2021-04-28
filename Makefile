@@ -12,7 +12,7 @@ OBJS			= $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
 DEPENDS			= $(patsubst %.o, %.d, $(OBJS))
 
 CC_FLAGS		= $(EXTRA_CCFLAGS) $(addprefix -I, $(INCLUE_DIR)) 
-LD_FLAGS		= -shared -Wl,--no-as-needed -ldl
+LD_FLAGS		= -shared -Wl,--no-as-needed $(addprefix -l, $(EXTRA_LIBS))
 
 TARGET_SCRIPT	= logger
 TARGET_LIB		= logger.so 
