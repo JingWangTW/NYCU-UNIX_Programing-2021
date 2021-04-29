@@ -28,6 +28,7 @@ static char * get_realpath ( const char * path );
 static char * get_fd_file_name ( int fd );
 static char * get_FILE_file_name ( FILE * file );
 static char * get_output_str ( const char * str );
+static char * get_output_long_str ( const char * str );
 
 void logger_output ( const char * func_name, int param_cnt, ... )
 {
@@ -112,6 +113,12 @@ void logger_output ( const char * func_name, int param_cnt, ... )
             {
                 str_parm = va_arg ( parm_list, char * );
                 snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "\"%s\"", get_output_str ( str_parm ) );
+                break;
+            }
+            case LONG_STR:
+            {
+                str_parm = va_arg ( parm_list, char * );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "\"%s\"", get_output_long_str ( str_parm ) );
                 break;
             }
             case PATH:
@@ -222,6 +229,11 @@ char * get_realpath ( const char * path )
     return resolve_path;
 }
 
+char * get_realpath_r ( const char * path, char * resolved_path )
+{
+    return realpath ( path, resolved_path );
+}
+
 char * get_fd_file_name ( int fd )
 {
     /* /proc/self/fd/{fd_num} */
@@ -233,9 +245,25 @@ char * get_fd_file_name ( int fd )
     return get_realpath ( fd_filepath );
 }
 
+char * get_fd_file_name_r ( int fd, char * file_name )
+{
+    /* /proc/self/fd/{fd_num} */
+    const int max_fd_filepath_len = 14 + 30;
+    static char fd_filepath[14 + 30 + 1];
+
+    snprintf ( fd_filepath, max_fd_filepath_len, "/proc/self/fd/%d", fd );
+
+    return get_realpath_r ( fd_filepath, file_name );
+}
+
 char * get_FILE_file_name ( FILE * file )
 {
     return get_fd_file_name ( fileno ( file ) );
+}
+
+char * get_FILE_file_name_r ( FILE * file, char * file_name )
+{
+    return get_fd_file_name_r ( fileno ( file ), file_name );
 }
 
 char * get_output_str ( const char * str )
@@ -244,6 +272,28 @@ char * get_output_str ( const char * str )
     size_t i;
 
     for ( i = 0; i < strlen ( str ) && i < 32; i++ )
+    {
+        if ( isprint ( str[i] ) )
+        {
+            output_str[i] = str[i];
+        }
+        else
+        {
+            output_str[i] = '.';
+        }
+    }
+
+    output_str[i] = '\0';
+
+    return output_str;
+}
+
+static char * get_output_long_str ( const char * str )
+{
+    static char output_str[1024];
+    size_t i;
+
+    for ( i = 0; i < strlen ( str ) && i < 1023; i++ )
     {
         if ( isprint ( str[i] ) )
         {
