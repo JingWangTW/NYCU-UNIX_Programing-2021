@@ -1,5 +1,4 @@
 #include <stdarg.h>
-#include <stdio.h>
 #include <sys/stat.h>
 
 #include "linux_cmd.h"
@@ -15,13 +14,9 @@ int open ( const char * pathname, int flags, ... )
     va_start ( input_args, flags );
     mode = va_arg ( input_args, mode_t );
 
-    FILE * output_file = get_output_file ( );
-
     ret_value = linux_open ( pathname, flags, mode );
 
-    fprintf ( output_file, "[logger] open(\"%s\", %o, %o) = %d\n", get_realpath ( pathname ), flags, mode, ret_value );
-
-    close_output_file ( output_file );
+    logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, mode );
 
     va_end ( input_args );
 

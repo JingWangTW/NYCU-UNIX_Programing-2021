@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <sys/stat.h>
 
 #include "linux_cmd.h"
@@ -8,13 +7,9 @@ int chown ( const char * pathname, uid_t owner, gid_t group )
 {
     int ret_value;
 
-    FILE * output_file = get_output_file ( );
-
     ret_value = linux_chown ( pathname, owner, group );
 
-    fprintf ( output_file, "[logger] chown(\"%s\", %d, %d) = %d\n", get_realpath ( pathname ), owner, group, ret_value );
-
-    close_output_file ( output_file );
+    logger_output ( "chown", 4, INT_DEC, ret_value, PATH, pathname, INT_DEC, owner, INT_DEC, group );
 
     return ret_value;
 }

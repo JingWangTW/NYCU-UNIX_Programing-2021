@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <sys/stat.h>
 
 #include "linux_cmd.h"
@@ -8,13 +7,9 @@ int creat ( const char * pathname, mode_t mode )
 {
     int ret_value;
 
-    FILE * output_file = get_output_file ( );
-
     ret_value = linux_creat ( pathname, mode );
 
-    fprintf ( output_file, "[logger] creat(\"%s\") = %d\n", get_realpath ( pathname ), ret_value );
-
-    close_output_file ( output_file );
+    logger_output ( "creat", 3, INT_DEC, ret_value, PATH, pathname, INT_OCT, mode );
 
     return ret_value;
 }

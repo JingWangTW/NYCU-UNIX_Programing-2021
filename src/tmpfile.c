@@ -7,13 +7,9 @@ FILE * tmpfile ( )
 {
     FILE * ret_value;
 
-    FILE * output_file = get_output_file ( );
-
     ret_value = linux_tmpfile ( );
 
-    fprintf ( output_file, "[logger] tmpfile() = \'%s\'\n", get_FILE_file_name ( ret_value ) );
-
-    close_output_file ( output_file );
+    logger_output ( "tmpfile", 1, POINTER, ret_value );
 
     return ret_value;
 }

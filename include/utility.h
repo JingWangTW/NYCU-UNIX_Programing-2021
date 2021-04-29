@@ -1,14 +1,19 @@
 #ifndef __UTILITY_H__
 #define __UTILITY_H__
 
-#include <stdio.h>
+typedef enum
+{
+    INT_LONG,
+    INT_OCT,
+    INT_DEC,
+    POINTER,
+    FILE_PTR,
+    FD_NO,
+    STRING,
+    PATH,
+    VOID,
+} OUTPUT_TYPE;
 
-FILE * get_output_file ( );
-void close_output_file ( FILE * output_file );
-
-char * get_realpath ( const char * path );
-char * get_fd_file_name ( int fd );
-char * get_FILE_file_name ( FILE * file );
-char * get_output_str ( const char * str );
+void logger_output ( const char * func_name, int param_cnt, ... );
 
 #endif

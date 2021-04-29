@@ -52,7 +52,7 @@ int linux_open ( const char * pathname, int flags, mode_t mode )
     return __open ( pathname, flags, mode );
 }
 
-int linux_read ( int fd, void * buf, size_t count )
+ssize_t linux_read ( int fd, void * buf, size_t count )
 {
     static int ( *__read ) ( int, void *, size_t ) = NULL;
 

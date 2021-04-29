@@ -1,41 +1,206 @@
+#include "utility.h"
+
 #include <ctype.h>
+#include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "linux_cmd.h"
 
-FILE * get_output_file ( )
+#define OUTPUT_MAX_LEN ( 1024 )
+
+typedef struct tOUTPUT_LIST
 {
-    FILE * output_file = NULL;
-    char * file_name   = NULL;
+    char output_str[OUTPUT_MAX_LEN];
+    struct tOUTPUT_LIST * next;
+} OUTPUT_LIST;
+
+static int get_output_fd ( );
+void close_output_fd ( int fd );
+
+static char * get_realpath ( const char * path );
+static char * get_fd_file_name ( int fd );
+static char * get_FILE_file_name ( FILE * file );
+static char * get_output_str ( const char * str );
+
+void logger_output ( const char * func_name, int param_cnt, ... )
+{
+    int output_fd;
+    va_list parm_list;
+
+    OUTPUT_LIST * list_head;
+    OUTPUT_LIST * list_tail;
+    OUTPUT_LIST * ret_str;
+    OUTPUT_LIST * list_tmp;
+    OUTPUT_TYPE type;
+
+    int output_cnt;
+    int output_cnt_tmp;
+    char output_line[OUTPUT_MAX_LEN];
+    char output_tmp[OUTPUT_MAX_LEN];
+
+    long long_parm;
+    int int_parm;
+    void * ptr_parm;
+    char * str_parm;
+    FILE * file_parm;
+
+    ret_str   = NULL;
+    list_tmp  = NULL;
+    list_head = NULL;
+    list_tail = NULL;
+    output_fd = get_output_fd ( );
+    va_start ( parm_list, param_cnt );
+
+    while ( param_cnt-- )
+    {
+        type = va_arg ( parm_list, OUTPUT_TYPE );
+
+        switch ( type )
+        {
+            case INT_LONG:
+            {
+                long_parm = va_arg ( parm_list, long );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "%ld", long_parm );
+                break;
+            }
+            case INT_OCT:
+            {
+                int_parm = va_arg ( parm_list, unsigned int );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "%o", int_parm );
+                break;
+            }
+            case INT_DEC:
+            {
+                int_parm = va_arg ( parm_list, int );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "%d", int_parm );
+                break;
+            }
+            case POINTER:
+            {
+                ptr_parm = va_arg ( parm_list, void * );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "%p", ptr_parm );
+                break;
+            }
+            case FILE_PTR:
+            {
+                file_parm = va_arg ( parm_list, void * );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "\"%s\"", get_FILE_file_name ( file_parm ) );
+                break;
+            }
+            case FD_NO:
+            {
+                int_parm = va_arg ( parm_list, int );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "\"%s\"", get_fd_file_name ( int_parm ) );
+                break;
+            }
+            case STRING:
+            {
+                str_parm = va_arg ( parm_list, char * );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "\"%s\"", get_output_str ( str_parm ) );
+                break;
+            }
+            case PATH:
+            {
+                str_parm = va_arg ( parm_list, char * );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "\"%s\"", get_realpath ( str_parm ) );
+                break;
+            }
+            case VOID:
+            {
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "void" );
+                break;
+            }
+        }
+
+        if ( ret_str == NULL )
+        {
+            ret_str = (OUTPUT_LIST *) malloc ( sizeof ( OUTPUT_LIST ) );
+
+            list_tmp = ret_str;
+        }
+        else if ( list_head == NULL )
+        {
+            list_head = (OUTPUT_LIST *) malloc ( sizeof ( OUTPUT_LIST ) );
+            list_tail = list_head;
+
+            list_tmp = list_head;
+        }
+        else
+        {
+            list_tail->next = (OUTPUT_LIST *) malloc ( sizeof ( OUTPUT_LIST ) );
+            list_tail       = list_tail->next;
+
+            list_tmp = list_tail;
+        }
+
+        strncpy ( list_tmp->output_str, output_tmp, OUTPUT_MAX_LEN - 1 );
+        list_tmp->next = NULL;
+    }
+
+    list_tmp       = list_head;
+    output_cnt     = 0;
+    output_cnt_tmp = 0;
+    snprintf ( output_line, OUTPUT_MAX_LEN - 1, "[logger] %s ( %n", func_name, &output_cnt_tmp );
+    output_cnt = output_cnt_tmp;
+
+    while ( list_tmp != NULL )
+    {
+        snprintf ( output_line + output_cnt, OUTPUT_MAX_LEN - output_cnt - 1, "%s%s %n", list_tmp->output_str, list_tmp == list_tail ? "" : ",", &output_cnt_tmp );
+
+        list_tmp = list_tmp->next;
+
+        free ( list_head );
+        list_head = list_tmp;
+        output_cnt += output_cnt_tmp;
+    }
+
+    snprintf ( output_line + output_cnt, OUTPUT_MAX_LEN - output_cnt - 1, ") = %s\n%n", ret_str == NULL ? "void" : ret_str->output_str, &output_cnt_tmp );
+
+    if ( ret_str != NULL )
+        free ( ret_str );
+
+    output_cnt += output_cnt_tmp;
+
+    write ( output_fd, output_line, output_cnt );
+
+    close_output_fd ( output_fd );
+}
+
+int get_output_fd ( )
+{
+    int output_fd;
+    char * file_name = NULL;
 
     file_name = getenv ( "LOGGER_OUTPUT_FILE" );
 
     if ( file_name == NULL )
     {
-        output_file = stderr;
+        output_fd = fileno ( stderr );
     }
     else
     {
-        output_file = linux_fopen ( file_name, "a" );
+        output_fd = linux_open ( file_name, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
     }
 
-    if ( output_file == NULL )
+    if ( output_fd == -1 )
     {
-        fprintf ( stderr, "Failed to open file %s.\n", file_name );
+        fprintf ( stderr, "[Logger] Failed to open file %s.\n", file_name );
     }
 
-    return output_file;
+    return output_fd;
 }
 
-void close_output_file ( FILE * output_file )
+void close_output_fd ( int fd )
 {
-    if ( output_file != stderr )
+    if ( fd != fileno ( stderr ) )
     {
-        linux_fclose ( output_file );
+        linux_close ( fd );
     }
 }
 
