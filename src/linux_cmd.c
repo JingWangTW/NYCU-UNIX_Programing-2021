@@ -64,6 +64,18 @@ ssize_t linux_read ( int fd, void * buf, size_t count )
     return __read ( fd, buf, count );
 }
 
+ssize_t linux_write ( int fd, const void * buf, size_t count )
+{
+    static ssize_t ( *__write ) ( int, const void *, size_t ) = NULL;
+
+    if ( __write == NULL )
+    {
+        __write = dlsym ( RTLD_NEXT, "write" );
+    }
+
+    return __write ( fd, buf, count );
+}
+
 int linux_remove ( const char * pathname )
 {
     static int ( *__remove ) ( const char * ) = NULL;

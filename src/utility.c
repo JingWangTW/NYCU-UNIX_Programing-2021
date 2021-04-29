@@ -1,6 +1,7 @@
 #include "utility.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -55,6 +56,7 @@ void logger_output ( const char * func_name, int param_cnt, ... )
     list_head = NULL;
     list_tail = NULL;
     output_fd = get_output_fd ( );
+
     va_start ( parm_list, param_cnt );
 
     while ( param_cnt-- )
@@ -167,7 +169,7 @@ void logger_output ( const char * func_name, int param_cnt, ... )
 
     output_cnt += output_cnt_tmp;
 
-    write ( output_fd, output_line, output_cnt );
+    linux_write ( output_fd, output_line, output_cnt );
 
     close_output_fd ( output_fd );
 }
@@ -190,7 +192,7 @@ int get_output_fd ( )
 
     if ( output_fd == -1 )
     {
-        fprintf ( stderr, "[Logger] Failed to open file %s.\n", file_name );
+        fprintf ( stderr, "[Logger] Failed to open file %s. %s\n", file_name, strerror ( errno ) );
     }
 
     return output_fd;
