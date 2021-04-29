@@ -99,7 +99,7 @@ check_args()
     then
         if [ -w $output_file ] || ( [ -d $(dirname "$output_file") ] && [ -w $(dirname "$output_file") ] )
         then
-            export LOGGER_OUTPUT_FILE=$output_file
+            export LOGGER_OUTPUT_FILE=$(realpath $output_file)            
         else
             echo "$output_file is not a writeable file."
             exit 1
