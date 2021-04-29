@@ -147,3 +147,27 @@ FILE * linux_tmpfile ( )
 
     return __tmpfile ( );
 }
+
+size_t linux_fread ( void * ptr, size_t size, size_t nmemb, FILE * stream )
+{
+    static size_t ( *__fread ) ( void *, size_t, size_t, FILE * );
+
+    if ( __fread == NULL )
+    {
+        __fread = dlsym ( RTLD_NEXT, "fread" );
+    }
+
+    return __fread ( ptr, size, nmemb, stream );
+}
+
+size_t linux_fwrite ( const void * ptr, size_t size, size_t nmemb, FILE * stream )
+{
+    static size_t ( *__fwrite ) ( const void *, size_t, size_t, FILE * );
+
+    if ( __fwrite == NULL )
+    {
+        __fwrite = dlsym ( RTLD_NEXT, "fwrite" );
+    }
+
+    return __fwrite ( ptr, size, nmemb, stream );
+}

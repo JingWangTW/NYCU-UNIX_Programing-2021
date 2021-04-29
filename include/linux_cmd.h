@@ -16,5 +16,7 @@ int linux_rename ( const char * oldpath, const char * newpath );
 int linux_fclose ( FILE * stream );
 FILE * linux_fopen ( const char * pathname, const char * mode );
 FILE * linux_tmpfile ( );
+size_t linux_fread ( void * ptr, size_t size, size_t nmemb, FILE * stream );
+size_t linux_fwrite ( const void * ptr, size_t size, size_t nmemb, FILE * stream );
 
 #endif
