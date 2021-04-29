@@ -22,7 +22,7 @@ typedef struct tOUTPUT_LIST
 } OUTPUT_LIST;
 
 static int get_output_fd ( );
-void close_output_fd ( int fd );
+static void close_output_fd ( int fd );
 
 static char * get_realpath ( const char * path );
 static char * get_fd_file_name ( int fd );
@@ -45,6 +45,7 @@ void logger_output ( const char * func_name, int param_cnt, ... )
     char output_line[OUTPUT_MAX_LEN];
     char output_tmp[OUTPUT_MAX_LEN];
 
+    unsigned long ulong_parm;
     long long_parm;
     int int_parm;
     void * ptr_parm;
@@ -65,7 +66,13 @@ void logger_output ( const char * func_name, int param_cnt, ... )
 
         switch ( type )
         {
-            case INT_LONG:
+            case UINT_LONG_DEC:
+            {
+                ulong_parm = va_arg ( parm_list, unsigned long );
+                snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "%lu", ulong_parm );
+                break;
+            }
+            case INT_LONG_DEC:
             {
                 long_parm = va_arg ( parm_list, long );
                 snprintf ( output_tmp, OUTPUT_MAX_LEN - 1, "%ld", long_parm );
@@ -148,7 +155,7 @@ void logger_output ( const char * func_name, int param_cnt, ... )
     list_tmp       = list_head;
     output_cnt     = 0;
     output_cnt_tmp = 0;
-    snprintf ( output_line, OUTPUT_MAX_LEN - 1, "[logger] %s ( %n", func_name, &output_cnt_tmp );
+    snprintf ( output_line, OUTPUT_MAX_LEN - 1, "[logger] %s\t( %n", func_name, &output_cnt_tmp );
     output_cnt = output_cnt_tmp;
 
     while ( list_tmp != NULL )

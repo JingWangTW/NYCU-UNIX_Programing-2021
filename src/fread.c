@@ -9,7 +9,7 @@ size_t fread ( void * ptr, size_t size, size_t nmemb, FILE * stream )
 
     ret_value = linux_fread ( ptr, size, nmemb, stream );
 
-    logger_output ( "fread", 5, INT_LONG, ret_value, STRING, ptr, INT_LONG, size, INT_LONG, nmemb, FILE_PTR, stream );
+    logger_output ( "fread", 5, UINT_LONG_DEC, ret_value, STRING, ptr, UINT_LONG_DEC, size, UINT_LONG_DEC, nmemb, FILE_PTR, stream );
 
     return ret_value;
 }

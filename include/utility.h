@@ -3,7 +3,8 @@
 
 typedef enum
 {
-    INT_LONG,
+    UINT_LONG_DEC,
+    INT_LONG_DEC,
     INT_OCT,
     INT_DEC,
     POINTER,
