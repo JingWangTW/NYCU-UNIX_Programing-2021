@@ -5,16 +5,21 @@
 
 typedef enum
 {
-    UINT_LONG_DEC,
-    INT_LONG_DEC,
     INT_OCT,
     INT_DEC,
+    INT_LONG_DEC,
+    UINT_LONG_DEC,
+
     POINTER,
+
     FILE_PTR,
     FD_NO,
+
     STRING,
     LONG_STR,
+
     PATH,
+
     VOID,
 } OUTPUT_TYPE;
 
