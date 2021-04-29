@@ -13,12 +13,40 @@ make
     --: separate the arguments for logger and for the command
 ```
 
-## Reference
+## Note
+### `close`, `fclose`, `remove`, `rename`
+* The real file in the disk represent by yhe filepath, `FILE` structure, fd passed to these functions are going to be deleted or disappeared.
+* Need to resolve the real file path before launch the real linux function. 
+* Otherwise, you can not get the right path of the file.
+
+### Be careful
+* For instance, if you are going to call `fopen` to open a file to write output log.
+* Be careful to launch the right one, not the faked one, which is written by you.
+* Otherwise, the faked function will be called recursivley.
+
+## Implementation Issue
 ### `open(2)`
+* There are two prototypes of [`open(2)`](https://linux.die.net/man/2/open) in manual pages.
+* There are no clear instruction in the spec whether we should show different result in the logger output of the function call.
+* And I can find it always show 3 parameters in the sample out section in the spec.
+* As a result, I just print 3 parameters in the logger output.
+
+### Path Output
+* As spec mentioned, string output should be truncated to 32 bytes at most.
+* But it doesn't cover the situation which the path is longer than 32 bytes.
+* I decide to print it all. The full pathname will not be truncated.
+
+### Output File
+* Spec didn't mentioned the behaviour when the logger received an invalid output file.
+* The given output file may be not able to open due to some reason like permission denied.
+* I will check the writable permission have been granted before launch the application.
+
+## Reference
+### [`open(2)`](https://linux.die.net/man/2/open)
 * [`open(2)`](https://linux.die.net/man/2/open)
 * There are two function prototypes in man page.
 * However, there should only be one function declaration for the same name in C.
-* You can find how the real `open(2)` declararion in `/usr/include/fcntl.h`.
+* You can find how the real [`open(2)`](https://linux.die.net/man/2/open) declararion in `/usr/include/fcntl.h`.
     ```c
     int open (const char *__file, int __oflag, ...);
     ```
@@ -43,8 +71,8 @@ make
 
 ### `ldd(1)`
 * [`ldd(1)`](https://linux.die.net/man/1/ldd)
-* Print shared library dependencies
-* Perform relocations for both data objects and functions, and report any missing objects or functions
+* Print shared library dependencies.
+* Perform relocations for both data objects and functions, and report any missing objects or functions.
     ```bash
     ldd -r ./libsrc.so
     ```
@@ -131,6 +159,12 @@ void easy_printf (char *fmt, int last_args, ...)   /* '...' is C syntax for a va
     va_end(ap);
 }
 ```
+
+### `static`
+* A file-static variables, functions is simlar to a private static member of a class.
+* It can only be accessed by functions in that file, similar to how a private static member variable can only be accessed by functions in the class in which it is defined.
+* There is only one copy of the variable.
+* Its lifetime is the program lifetime.
 
 ### Shell Script
 * [`bash(1)`](https://linux.die.net/man/1/bash)    
