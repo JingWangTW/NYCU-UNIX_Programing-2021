@@ -40,6 +40,18 @@ int linux_creat ( const char * pathname, mode_t mode )
     return __creat ( pathname, mode );
 }
 
+int linux_creat64 ( const char * pathname, mode_t mode )
+{
+    static int ( *__creat64 ) ( const char *, mode_t ) = NULL;
+
+    if ( __creat64 == NULL )
+    {
+        __creat64 = dlsym ( RTLD_NEXT, "creat64" );
+    }
+
+    return __creat64 ( pathname, mode );
+}
+
 int linux_remove ( const char * pathname )
 {
     static int ( *__remove ) ( const char * ) = NULL;
@@ -74,6 +86,18 @@ int linux_open ( const char * pathname, int flags, mode_t mode )
     }
 
     return __open ( pathname, flags, mode );
+}
+
+int linux_open64 ( const char * pathname, int flags, mode_t mode )
+{
+    static int ( *__open64 ) ( const char *, int, mode_t ) = NULL;
+
+    if ( __open64 == NULL )
+    {
+        __open64 = dlsym ( RTLD_NEXT, "open" );
+    }
+
+    return __open64 ( pathname, flags, mode );
 }
 
 int linux_close ( int fd )
@@ -124,6 +148,18 @@ FILE * linux_fopen ( const char * pathname, const char * mode )
     return __fopen ( pathname, mode );
 }
 
+FILE * linux_fopen64 ( const char * pathname, const char * mode )
+{
+    static FILE * ( *__fopen64 ) ( const char *, const char * ) = NULL;
+
+    if ( __fopen64 == NULL )
+    {
+        __fopen64 = dlsym ( RTLD_NEXT, "fopen64" );
+    }
+
+    return __fopen64 ( pathname, mode );
+}
+
 int linux_fclose ( FILE * stream )
 {
     static int ( *__fclose ) ( FILE * ) = NULL;
@@ -170,4 +206,16 @@ FILE * linux_tmpfile ( )
     }
 
     return __tmpfile ( );
+}
+
+FILE * linux_tmpfile64 ( )
+{
+    static FILE * ( *__tmpfile64 ) ( ) = NULL;
+
+    if ( __tmpfile64 == NULL )
+    {
+        __tmpfile64 = dlsym ( RTLD_NEXT, "tmpfile64" );
+    }
+
+    return __tmpfile64 ( );
 }
