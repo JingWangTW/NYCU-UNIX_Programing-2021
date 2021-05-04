@@ -3,6 +3,10 @@
 
 #include <stdio.h>
 
+#ifndef O_TMPFILE
+#define O_TMPFILE ( __O_TMPFILE | O_DIRECTORY )
+#endif
+
 typedef enum
 {
     INT_OCT,

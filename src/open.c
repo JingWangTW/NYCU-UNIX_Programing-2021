@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 
@@ -16,7 +17,14 @@ int open ( const char * pathname, int flags, ... )
 
     ret_value = linux_open ( pathname, flags, mode );
 
-    logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, mode );
+    if ( flags & O_CREAT || flags & O_TMPFILE )
+    {
+        logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, mode );
+    }
+    else
+    {
+        logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, 0 );
+    }
 
     va_end ( input_args );
 
@@ -35,7 +43,14 @@ int open64 ( const char * pathname, int flags, ... )
 
     ret_value = linux_open64 ( pathname, flags, mode );
 
-    logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, mode );
+    if ( flags & O_CREAT || flags & O_TMPFILE )
+    {
+        logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, mode );
+    }
+    else
+    {
+        logger_output ( "open", 4, INT_DEC, ret_value, PATH, pathname, INT_OCT, flags, INT_OCT, 0 );
+    }
 
     va_end ( input_args );
 
