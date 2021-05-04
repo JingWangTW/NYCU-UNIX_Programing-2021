@@ -27,6 +27,7 @@ int main ( )
     chown ( "./test_creat", geteuid ( ), getegid ( ) );
 
     tmp_file = tmpfile ( );
+    fclose ( tmp_file );
 
     test_file = fopen ( "./test_fopen", "w" );
     fwrite ( "12345", 5, 1, test_file );
