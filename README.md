@@ -19,10 +19,24 @@ make
 * Need to resolve the real file path before launch the real linux function. 
 * Otherwise, you can not get the right path of the file.
 
-### Be careful
+### Recursively calling
 * For instance, if you are going to call `fopen` to open a file to write output log.
 * Be careful to launch the right one, not the faked one, which is written by you.
 * Otherwise, the faked function will be called recursivley.
+
+### Seperate fd for logger and hijacked app
+* The hijacked application may close [`stderr(3)`](https://linux.die.net/man/3/stderr).
+* The output of looger will go wrong.
+* Directly output to the location of [`stderr(3)`](https://linux.die.net/man/3/stderr) (`readlink /proc/self/fd/2`).
+* Launch the hijacked application with [`exec(1p)`](https://man7.org/linux/man-pages/man1/exec.1p.html), so the file descriptor will be copied.
+* Then if the hijacked application close [`stderr(3)`](https://linux.die.net/man/3/stderr), our output will have no influence.
+
+### Large file extension
+* `creat64`, `open64`, `tmpfile64`, `fopen64`.
+* These functions will be existed with large file extension.
+* If we compile hijacked application with `-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64`.
+* Our [`open(2)`](https://linux.die.net/man/2/open) will be automatically compiled to `open64`.
+* So we also need to hijack these functions.
 
 ## Implementation Issue
 ### `open(2)`
@@ -51,6 +65,11 @@ make
     int open (const char *__file, int __oflag, ...);
     ```
 * Use `va_*` family macros to deal with the unnamed arguments.
+
+### [`open(2)`](https://linux.die.net/man/2/open)2
+* [`open(2)`](https://linux.die.net/man/2/open)
+* If neither `O_CREAT`  nor  `O_TMPFILE`  is  specified in `flag`, then `mode` is ignored.
+* You can test if `O_CREAT`  nor  `O_TMPFILE` is specified in `flag` to determine what value to print for `mode`.
 ### Shared Library Compilation
 * Compile single file in project
     ```bash
